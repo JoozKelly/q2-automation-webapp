@@ -1,21 +1,42 @@
 "use client";
 
 import { useState } from 'react';
-import { FileText, LayoutTemplate, Sparkles, Send, Download } from 'lucide-react';
+import { FileText, LayoutTemplate, Sparkles, Send, Download, AlertCircle } from 'lucide-react';
 import { usePDF } from 'react-to-pdf';
+import { useDataStore } from '@/context/store';
+import Link from 'next/link';
 
 export default function ReportBuilder() {
+  const { data } = useDataStore();
   const [isGenerating, setIsGenerating] = useState(false);
   const [storyline, setStoryline] = useState('');
+  const [selectedSections, setSelectedSections] = useState<string[]>([
+    'Executive Summary', 'Macroeconomic Indicators', 'Investment Highlights (Apple/Luxshare)', 'Sector Analysis', 'Future Outlook'
+  ]);
   const { toPDF, targetRef } = usePDF({filename: 'Batam_Economic_Outlook_Q2_2026.pdf'});
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
+    if (!data) return;
     setIsGenerating(true);
-    // Simulate AI synthesis of data
-    setTimeout(() => {
-      setStoryline(`### Batam Economic Outlook Q2 2026\n\n**Executive Summary:**\nBatam's economy has demonstrated exceptional resilience in Q2 2026, driven by a surge in high-tech manufacturing investments and stabilized inflation. The GDP growth reached an impressive 7.2%, outperforming national averages.\n\n**Key Highlights:**\n- **Foreign Direct Investment:** The confirmed $200M investment from Apple Inc. and Luxshare for AirTag production has catapulted FDI inflows by 22% compared to Q1.\n- **Inflation Control:** Effective local policies have kept the inflation rate steady at 2.5%, ensuring favorable operating costs for our tenants.\n- **Infrastructure Readiness:** The industrial parks are fully prepared to accommodate the influx of new manufacturing lines, with upgraded power grids and specialized logistics hubs.`);
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data, sections: selectedSections })
+      });
+      
+      const resData = await response.json();
+      if (resData.result) {
+        setStoryline(resData.result);
+      } else {
+        setStoryline('Error generating report: ' + (resData.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error(err);
+      setStoryline('Failed to connect to generation API.');
+    } finally {
       setIsGenerating(false);
-    }, 2000);
+    }
   };
 
   return (
@@ -39,17 +60,31 @@ export default function ReportBuilder() {
           <div className="space-y-3">
             {['Executive Summary', 'Macroeconomic Indicators', 'Investment Highlights (Apple/Luxshare)', 'Sector Analysis', 'Future Outlook'].map((item, i) => (
               <label key={i} className="flex items-center space-x-3 p-3 rounded-lg border border-slate-800 hover:border-slate-700 bg-slate-900 cursor-pointer transition-colors">
-                <input type="checkbox" defaultChecked className="rounded border-slate-700 bg-slate-800 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-900" />
+                <input 
+                  type="checkbox" 
+                  checked={selectedSections.includes(item)}
+                  onChange={(e) => {
+                    if (e.target.checked) setSelectedSections(prev => [...prev, item]);
+                    else setSelectedSections(prev => prev.filter(s => s !== item));
+                  }}
+                  className="rounded border-slate-700 bg-slate-800 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-900" 
+                />
                 <span className="text-sm font-medium text-slate-300">{item}</span>
               </label>
             ))}
           </div>
 
           <div className="pt-4 border-t border-slate-800">
+            {!data && (
+              <div className="mb-4 flex items-start space-x-2 text-amber-400 bg-amber-400/10 p-3 rounded-lg text-sm border border-amber-400/20">
+                <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                <span>You need to ingest data first before generating a report. <Link href="/ingestion" className="underline font-medium">Go to Data Ingestion</Link></span>
+              </div>
+            )}
             <button 
               onClick={handleGenerate}
-              disabled={isGenerating}
-              className={`w-full flex items-center justify-center space-x-2 py-3 rounded-lg text-sm font-medium transition-all ${isGenerating ? 'bg-indigo-500/50 text-indigo-200 cursor-not-allowed' : 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.3)]'}`}
+              disabled={isGenerating || !data || selectedSections.length === 0}
+              className={`w-full flex items-center justify-center space-x-2 py-3 rounded-lg text-sm font-medium transition-all ${(isGenerating || !data || selectedSections.length === 0) ? 'bg-indigo-500/50 text-indigo-200 cursor-not-allowed' : 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.3)]'}`}
             >
               <Sparkles size={18} />
               <span>{isGenerating ? 'Synthesizing...' : 'Generate Storyline (AI)'}</span>

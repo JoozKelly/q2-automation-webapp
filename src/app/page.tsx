@@ -1,35 +1,30 @@
 "use client";
 
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-
-const gdpData = [
-  { year: '2020', gdp: 4.5, target: 5.0 },
-  { year: '2021', gdp: 5.1, target: 5.2 },
-  { year: '2022', gdp: 5.8, target: 5.5 },
-  { year: '2023', gdp: 6.2, target: 6.0 },
-  { year: '2024', gdp: 6.8, target: 6.5 },
-  { year: '2025', gdp: 7.0, target: 6.8 },
-  { year: '2026', gdp: 7.2, target: 7.0 },
-];
-
-const investmentData = [
-  { quarter: 'Q1 2025', foreign: 120, domestic: 80 },
-  { quarter: 'Q2 2025', foreign: 150, domestic: 90 },
-  { quarter: 'Q3 2025', foreign: 140, domestic: 85 },
-  { quarter: 'Q4 2025', foreign: 180, domestic: 100 },
-  { quarter: 'Q1 2026', foreign: 220, domestic: 110 },
-];
-
-const inflationData = [
-  { month: 'Oct 25', rate: 2.8 },
-  { month: 'Nov 25', rate: 2.9 },
-  { month: 'Dec 25', rate: 3.1 },
-  { month: 'Jan 26', rate: 2.7 },
-  { month: 'Feb 26', rate: 2.6 },
-  { month: 'Mar 26', rate: 2.5 },
-];
+import { useDataStore } from '@/context/store';
+import { Database } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Dashboard() {
+  const { data } = useDataStore();
+
+  if (!data) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh] space-y-6">
+        <div className="p-6 bg-slate-900/50 rounded-full border border-slate-800">
+          <Database size={48} className="text-slate-500" />
+        </div>
+        <div className="text-center max-w-md">
+          <h2 className="text-xl font-bold text-slate-200 mb-2">No Data Available</h2>
+          <p className="text-slate-400 mb-6">You have not ingested any data for this quarter. Run a Genspark Deep Search or manually upload your Excel sheet to populate the dashboard.</p>
+          <Link href="/ingestion" className="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-all shadow-[0_0_15px_rgba(99,102,241,0.4)]">
+            Go to Data Ingestion
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Top Metrics Cards */}
@@ -45,7 +40,7 @@ export default function Dashboard() {
           <h3 className="text-lg font-semibold text-slate-200 mb-6">GDP Growth vs Target (%)</h3>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={gdpData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+              <LineChart data={data.gdpData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                 <XAxis dataKey="year" stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
                 <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
@@ -66,7 +61,7 @@ export default function Dashboard() {
           <h3 className="text-lg font-semibold text-slate-200 mb-6">Investment Inflows (USD Millions)</h3>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={investmentData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+              <AreaChart data={data.investmentData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                 <XAxis dataKey="quarter" stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
                 <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
@@ -89,7 +84,7 @@ export default function Dashboard() {
           <h3 className="text-lg font-semibold text-slate-200 mb-6">Monthly Inflation Rate (%)</h3>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={inflationData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }} barSize={32}>
+              <BarChart data={data.inflationData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }} barSize={32}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                 <XAxis dataKey="month" stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
                 <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
@@ -113,13 +108,7 @@ export default function Dashboard() {
           </h3>
           <div className="space-y-4 text-slate-300 text-sm leading-relaxed relative z-10">
             <p>
-              <strong className="text-slate-100">Macroeconomic Stability:</strong> Batam continues to demonstrate robust economic resilience, exceeding the 7.0% GDP growth target. Inflation has stabilized at 2.5%, creating a favorable environment for industrial expansion.
-            </p>
-            <p>
-              <strong className="text-slate-100">Investment Surge:</strong> The $200 million investment commitment from Apple Inc. and Luxshare for AirTag manufacturing has driven foreign direct investment up by 22.2% quarter-over-quarter, signaling strong confidence in the region's high-tech manufacturing capabilities.
-            </p>
-            <p>
-              <strong className="text-slate-100">Future Outlook:</strong> We anticipate sustained momentum into Q3, supported by stable domestic consumption and ongoing infrastructure enhancements in key industrial parks.
+              <strong className="text-slate-100">AI Synthesis:</strong> {data.summary || "Batam continues to demonstrate robust economic resilience, exceeding the GDP growth target. Inflation has stabilized, creating a favorable environment for industrial expansion."}
             </p>
           </div>
           <div className="mt-6">
