@@ -6,14 +6,15 @@ import {
 } from 'recharts';
 import { useDataStore } from '@/context/store';
 import { useReportStore } from '@/store/reportStore';
-import { Database, TrendingUp, TrendingDown } from 'lucide-react';
+import { Database, TrendingUp, TrendingDown, Newspaper, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import MacroIndicatorGrid from '@/components/charts/MacroIndicatorGrid';
 import GDPHistoricalChart from '@/components/charts/GDPHistoricalChart';
+import type { NewsItem } from '@/types/report';
 
 export default function Dashboard() {
   const { data } = useDataStore();
-  const { dashboardStats, macroGrid } = useReportStore();
+  const { dashboardStats, macroGrid, newsItems } = useReportStore();
 
   // Derive metric values: prefer ingest stats, fall back to timeseries last value, then null
   const gdpValue = dashboardStats
@@ -210,6 +211,75 @@ export default function Dashboard() {
           </div>
         </>
       )}
+
+      {/* News Feed */}
+      <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <Newspaper size={16} className="text-indigo-400" />
+            <h3 className="text-base font-semibold text-slate-200">Batam FTZ News</h3>
+            {newsItems.length > 0 && (
+              <span className="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">
+                {newsItems.length}
+              </span>
+            )}
+          </div>
+          <Link
+            href="/ingestion?tab=news"
+            className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
+          >
+            Fetch news <ChevronRight size={13} />
+          </Link>
+        </div>
+
+        {newsItems.length === 0 ? (
+          <div className="p-8 text-center text-slate-600">
+            <Newspaper size={32} className="mx-auto mb-2 opacity-30" />
+            <p className="text-sm">No news loaded yet.</p>
+            <Link
+              href="/ingestion"
+              className="text-xs text-indigo-400 hover:underline mt-1 inline-block"
+            >
+              Go to Data Ingestion → News tab
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-px bg-slate-800/30">
+            {newsItems.slice(0, 6).map((item) => (
+              <NewsCard key={item.id} item={item} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  fdi:            'bg-blue-500/15 text-blue-300',
+  infrastructure: 'bg-orange-500/15 text-orange-300',
+  policy:         'bg-purple-500/15 text-purple-300',
+  sector:         'bg-emerald-500/15 text-emerald-300',
+  geopolitics:    'bg-rose-500/15 text-rose-300',
+  economy:        'bg-indigo-500/15 text-indigo-300',
+};
+
+function NewsCard({ item }: { item: NewsItem }) {
+  return (
+    <div className="bg-slate-900/50 p-4 hover:bg-slate-800/30 transition-colors">
+      <div className="flex items-center gap-2 mb-2">
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[item.category] ?? 'bg-slate-700 text-slate-300'}`}>
+          {item.category}
+        </span>
+        <span className="text-xs text-slate-600">{item.date}</span>
+      </div>
+      <h4 className="text-sm font-semibold text-slate-100 leading-snug mb-1.5">
+        {item.title}
+      </h4>
+      <p className="text-xs text-slate-400 leading-relaxed line-clamp-3">
+        {item.summary}
+      </p>
+      <p className="text-xs text-slate-600 mt-2">{item.source}</p>
     </div>
   );
 }

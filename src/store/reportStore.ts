@@ -11,6 +11,7 @@ import type {
   SectorSummary,
   MacroGridGroup,
   DashboardStats,
+  NewsItem,
 } from '@/types/report';
 
 const DEFAULT_REPORT: ReportData = {
@@ -39,6 +40,8 @@ interface ReportStore {
   dashboardStats: DashboardStats | null;
   macroGrid: MacroGridGroup[];
   sectorSummaries: SectorSummary[];
+  newsItems: NewsItem[];
+  ceoBrief: string;
 
   setGDPHistorical: (points: GDPDataPoint[]) => void;
   setRawWorkbook: (wb: Record<string, unknown[]>, fileName: string) => void;
@@ -49,6 +52,8 @@ interface ReportStore {
   setDashboardStats: (stats: DashboardStats) => void;
   setMacroGrid: (grid: MacroGridGroup[]) => void;
   setSectorSummaries: (summaries: SectorSummary[]) => void;
+  setNewsItems: (items: NewsItem[]) => void;
+  setCeoBrief: (brief: string) => void;
   setFullPayload: (payload: FullPayload) => void;
   reset: () => void;
 }
@@ -62,6 +67,8 @@ export const useReportStore = create<ReportStore>()(
       dashboardStats: null,
       macroGrid: [],
       sectorSummaries: [],
+      newsItems: [],
+      ceoBrief: '',
 
       setGDPHistorical: (points) =>
         set((s) => ({ data: { ...s.data, gdpHistorical: points } })),
@@ -88,6 +95,10 @@ export const useReportStore = create<ReportStore>()(
 
       setSectorSummaries: (summaries) => set({ sectorSummaries: summaries }),
 
+      setNewsItems: (items) => set({ newsItems: items }),
+
+      setCeoBrief: (brief) => set({ ceoBrief: brief }),
+
       setFullPayload: (payload) =>
         set((s) => ({
           ...(payload.macroGrid !== undefined ? { macroGrid: payload.macroGrid } : {}),
@@ -108,6 +119,8 @@ export const useReportStore = create<ReportStore>()(
           dashboardStats: null,
           macroGrid: [],
           sectorSummaries: [],
+          newsItems: [],
+          ceoBrief: '',
         }),
     }),
     {
@@ -118,6 +131,8 @@ export const useReportStore = create<ReportStore>()(
         dashboardStats: s.dashboardStats,
         macroGrid: s.macroGrid,
         sectorSummaries: s.sectorSummaries,
+        newsItems: s.newsItems,
+        ceoBrief: s.ceoBrief,
       }),
     }
   )

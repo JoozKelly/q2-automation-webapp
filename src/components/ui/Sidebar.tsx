@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FileSpreadsheet, FileText, Settings } from 'lucide-react';
+import { LayoutDashboard, FileSpreadsheet, FileText, BrainCircuit, Settings } from 'lucide-react';
 
 const NAV = [
   { href: '/',               icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/ingestion',      icon: FileSpreadsheet,  label: 'Data Ingestion' },
+  { href: '/ceo-brief',      icon: BrainCircuit,     label: 'CEO Brief' },
   { href: '/report-builder', icon: FileText,         label: 'Report Builder' },
 ];
 

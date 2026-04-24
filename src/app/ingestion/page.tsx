@@ -1,12 +1,26 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { RefreshCw, UploadCloud, FileSpreadsheet, CheckCircle2, AlertCircle, Terminal, Download } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  UploadCloud, FileText, FileSpreadsheet, Image, X,
+  Sparkles, Newspaper, CheckCircle2, AlertCircle, Terminal,
+  Download, RefreshCw,
+} from 'lucide-react';
 import { useDataStore, EconomicData } from '@/context/store';
 import { useReportStore } from '@/store/reportStore';
-import type { DashboardStats, GDPDataPoint, InfraProject, GeoEvent, SectorSummary, MacroGridGroup } from '@/types/report';
+import type {
+  DashboardStats, GDPDataPoint, InfraProject, GeoEvent,
+  SectorSummary, MacroGridGroup, NewsItem,
+} from '@/types/report';
 import * as XLSX from 'xlsx';
-import { parseWorkbook, parseGDPSheet, detectGDPSheet } from '@/lib/parsers/xlsx';
+
+// ─── Types ─────────────────────────────────────────────────────────────────
+
+interface FileEntry {
+  id: string;
+  file: File;
+  status: 'pending' | 'done' | 'error';
+}
 
 interface IngestPayload {
   dashboardStats?: DashboardStats;
@@ -21,26 +35,93 @@ interface IngestPayload {
   summary?: string;
 }
 
+// ─── File type helpers ─────────────────────────────────────────────────────
+
+function fileIcon(file: File) {
+  const name = file.name.toLowerCase();
+  if (file.type === 'application/pdf' || name.endsWith('.pdf'))
+    return <FileText size={16} className="text-rose-400" />;
+  if (file.type.startsWith('image/') || /\.(png|jpg|jpeg|webp)$/.test(name))
+    return <Image size={16} className="text-amber-400" />;
+  return <FileSpreadsheet size={16} className="text-emerald-400" />;
+}
+
+function formatBytes(n: number) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// ─── News category badge ────────────────────────────────────────────────────
+
+const CATEGORY_COLORS: Record<string, string> = {
+  fdi:            'bg-blue-500/15 text-blue-300',
+  infrastructure: 'bg-orange-500/15 text-orange-300',
+  policy:         'bg-purple-500/15 text-purple-300',
+  sector:         'bg-emerald-500/15 text-emerald-300',
+  geopolitics:    'bg-rose-500/15 text-rose-300',
+  economy:        'bg-indigo-500/15 text-indigo-300',
+};
+
+const RELEVANCE_DOT: Record<string, string> = {
+  high:   'bg-emerald-400',
+  medium: 'bg-amber-400',
+  low:    'bg-slate-500',
+};
+
+// ─── Page ──────────────────────────────────────────────────────────────────
+
 export default function DataIngestion() {
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchStatus, setSearchStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [logs, setLogs] = useState<string[]>([]);
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
-  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
-  const logsEndRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<'documents' | 'news'>('documents');
+
+  // Document analysis state
+  const [files, setFiles] = useState<FileEntry[]>([]);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisStatus, setAnalysisStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [analysisLog, setAnalysisLog] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data, setData } = useDataStore();
-  const { setGDPHistorical, setRawWorkbook, setFullPayload } = useReportStore();
+  // News state
+  const [fetchingNews, setFetchingNews] = useState(false);
+  const [newsStatus, setNewsStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [newsLog, setNewsLog] = useState<string[]>([]);
+  const newsLogEndRef = useRef<HTMLDivElement>(null);
 
+  const { data, setData } = useDataStore();
+  const { setFullPayload, newsItems, setNewsItems } = useReportStore();
+
+  // Auto-scroll news log
   useEffect(() => {
-    if (logsEndRef.current) {
-      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [logs]);
+    newsLogEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [newsLog]);
+
+  // ── Drag & drop ───────────────────────────────────────────────────────────
+
+  const addFiles = useCallback((incoming: FileList | File[]) => {
+    const arr = Array.from(incoming);
+    const entries: FileEntry[] = arr.map((f) => ({
+      id: `${f.name}-${f.size}-${Date.now()}-${Math.random()}`,
+      file: f,
+      status: 'pending',
+    }));
+    setFiles((prev) => [...prev, ...entries]);
+    setAnalysisStatus('idle');
+  }, []);
+
+  const onDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+    },
+    [addFiles]
+  );
+
+  const removeFile = (id: string) =>
+    setFiles((prev) => prev.filter((f) => f.id !== id));
+
+  // ── Apply payload to stores ────────────────────────────────────────────────
 
   const applyPayload = (payload: IngestPayload) => {
-    // Update the chart store (simple timeseries for dashboard charts)
     const economicData: EconomicData = {
       gdpData:        payload.gdpData        ?? [],
       investmentData: payload.investmentData ?? [],
@@ -48,8 +129,6 @@ export default function DataIngestion() {
       summary:        payload.summary        ?? '',
     };
     setData(economicData);
-
-    // Update the report store (rich structured data for all sections)
     setFullPayload({
       gdpHistorical:   payload.gdpHistorical,
       infraProjects:   payload.infraProjects,
@@ -60,359 +139,382 @@ export default function DataIngestion() {
     });
   };
 
-  const handleGensparkSearch = async () => {
-    setIsSearching(true);
-    setSearchStatus('idle');
-    setLogs([]);
+  // ── Analyze files ──────────────────────────────────────────────────────────
+
+  const handleAnalyze = async () => {
+    if (!files.length) return;
+    setAnalyzing(true);
+    setAnalysisStatus('idle');
+    setAnalysisLog(['Reading files…']);
+
+    const form = new FormData();
+    for (const entry of files) form.append('files', entry.file);
 
     try {
-      const response = await fetch('/api/ingest', {
+      setAnalysisLog((l) => [...l, `Sending ${files.length} file(s) to Claude for analysis…`]);
+      const res = await fetch('/api/analyze-files', { method: 'POST', body: form });
+      const json = await res.json();
+
+      if (!res.ok) throw new Error(json.error ?? 'Analysis failed');
+
+      setAnalysisLog((l) => [...l, 'Extracting economic data…', 'Populating dashboard…']);
+      applyPayload(json);
+
+      setFiles((prev) => prev.map((f) => ({ ...f, status: 'done' as const })));
+      setAnalysisStatus('success');
+      setAnalysisLog((l) => [...l, '✓ All sections updated.']);
+    } catch (err) {
+      setAnalysisStatus('error');
+      setFiles((prev) => prev.map((f) => ({ ...f, status: 'error' as const })));
+      setAnalysisLog((l) => [...l, `Error: ${err instanceof Error ? err.message : String(err)}`]);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  // ── Fetch news ─────────────────────────────────────────────────────────────
+
+  const handleFetchNews = async () => {
+    setFetchingNews(true);
+    setNewsStatus('idle');
+    setNewsLog([]);
+
+    try {
+      const res = await fetch('/api/news', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: 'Batam FTZ Q2 2026 GDP growth investment inflation infrastructure sector projects geopolitics',
-        }),
+        body: JSON.stringify({}),
       });
+      if (!res.body) throw new Error('No response body');
 
-      if (!response.body) throw new Error('No response body');
-
-      const reader = response.body.getReader();
+      const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let fullOutput = '';
+      let full = '';
 
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-
         const chunk = decoder.decode(value, { stream: true });
-        fullOutput += chunk;
-
-        const lines = chunk.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('[LOG]')) {
-            setLogs((prev) => [...prev, line.replace('[LOG]', '').trim()]);
-          }
-          if (line.startsWith('[ERROR]')) {
-            setLogs((prev) => [...prev, `⚠ ${line.replace('[ERROR]', '').trim()}`]);
-          }
+        full += chunk;
+        for (const line of chunk.split('\n')) {
+          if (line.startsWith('[LOG]'))
+            setNewsLog((prev) => [...prev, line.replace('[LOG]', '').trim()]);
+          if (line.startsWith('[ERROR]'))
+            setNewsLog((prev) => [...prev, `⚠ ${line.replace('[ERROR]', '').trim()}`]);
         }
       }
 
-      // Extract [PAYLOAD] line — could be large, so search by prefix
-      const payloadLine = fullOutput
-        .split('\n')
-        .find((l) => l.startsWith('[PAYLOAD]'));
+      const payloadLine = full.split('\n').find((l) => l.startsWith('[PAYLOAD]'));
+      if (!payloadLine) throw new Error('No payload returned');
 
-      if (payloadLine) {
-        const payload: IngestPayload = JSON.parse(payloadLine.slice('[PAYLOAD] '.length));
-        applyPayload(payload);
-        setSearchStatus('success');
-      } else {
-        throw new Error('No structured payload returned');
-      }
+      const items: NewsItem[] = JSON.parse(payloadLine.slice('[PAYLOAD] '.length));
+      setNewsItems(items);
+      setNewsStatus('success');
     } catch (err) {
-      console.error(err);
-      setSearchStatus('error');
-      setLogs((prev) => [...prev, `Error: ${err instanceof Error ? err.message : String(err)}`]);
+      setNewsStatus('error');
+      setNewsLog((prev) => [...prev, `Error: ${err instanceof Error ? err.message : String(err)}`]);
     } finally {
-      setIsSearching(false);
+      setFetchingNews(false);
     }
   };
 
-  // Try to detect and parse an investment sheet (quarterly foreign/domestic)
-  const tryParseInvestmentSheet = (wb: Record<string, Record<string, unknown>[]>) => {
-    const keywords = ['invest', 'fdi', 'capital', 'modal', 'realisasi'];
-    for (const [name, rows] of Object.entries(wb)) {
-      if (!keywords.some((kw) => name.toLowerCase().includes(kw))) continue;
-      if (rows.length === 0) continue;
-      const keys = Object.keys(rows[0]);
-      const quarterKey = keys.find((k) =>
-        ['quarter', 'quartal', 'period', 'periode', 'q'].some((kw) => k.toLowerCase().includes(kw))
-      );
-      const foreignKey = keys.find((k) =>
-        ['foreign', 'fdi', 'pma', 'asing'].some((kw) => k.toLowerCase().includes(kw))
-      );
-      const domesticKey = keys.find((k) =>
-        ['domestic', 'pmdn', 'dalam negeri'].some((kw) => k.toLowerCase().includes(kw))
-      );
-      if (quarterKey && foreignKey) {
-        return rows.map((r) => ({
-          quarter: String(r[quarterKey] ?? ''),
-          foreign: Number(r[foreignKey] ?? 0),
-          domestic: domesticKey ? Number(r[domesticKey] ?? 0) : 0,
-        }));
-      }
-    }
-    return null;
-  };
-
-  // Try to detect and parse an inflation sheet (monthly rate)
-  const tryParseInflationSheet = (wb: Record<string, Record<string, unknown>[]>) => {
-    const keywords = ['inflat', 'cpi', 'ipc', 'harga', 'price', 'ihk'];
-    for (const [name, rows] of Object.entries(wb)) {
-      if (!keywords.some((kw) => name.toLowerCase().includes(kw))) continue;
-      if (rows.length === 0) continue;
-      const keys = Object.keys(rows[0]);
-      const monthKey = keys.find((k) =>
-        ['month', 'bulan', 'period', 'mon'].some((kw) => k.toLowerCase().includes(kw))
-      );
-      const rateKey = keys.find((k) =>
-        ['rate', 'inflat', 'pct', '%', 'laju'].some((kw) => k.toLowerCase().includes(kw))
-      );
-      if (monthKey && rateKey) {
-        return rows.map((r) => ({
-          month: String(r[monthKey] ?? ''),
-          rate: Number(r[rateKey] ?? 0),
-        }));
-      }
-    }
-    return null;
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadedFileName(file.name);
-    setUploadStatus('uploading');
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const buffer = ev.target?.result as ArrayBuffer;
-        const wb = parseWorkbook(buffer);
-
-        // ── GDP ──────────────────────────────────────────────────────────────
-        const gdpSheetKey = detectGDPSheet(wb);
-        const gdpRows = gdpSheetKey ? parseGDPSheet(wb[gdpSheetKey]) : [];
-        setGDPHistorical(gdpRows);
-        setRawWorkbook(wb, file.name);
-
-        const gdpData = gdpRows
-          .filter((d) => d.year >= 2018)
-          .map((d) => ({
-            year: String(d.year),
-            gdp: d.gdpGrowthPct ?? 0,
-            target: Math.max(0, (d.gdpGrowthPct ?? 0) - 0.4),
-          }));
-
-        const gdpHistorical: GDPDataPoint[] = gdpRows.map((d) => ({
-          year: d.year,
-          gdpGrowthPct: d.gdpGrowthPct,
-          gdpTrillionIDR: d.gdpTrillionIDR,
-        }));
-
-        // ── Investment (optional sheet) ────────────────────────────────────
-        const investmentData = tryParseInvestmentSheet(wb) ?? [];
-
-        // ── Inflation (optional sheet) ─────────────────────────────────────
-        const inflationData = tryParseInflationSheet(wb) ?? [];
-
-        // ── Dashboard stats derived from parsed GDP ────────────────────────
-        const lastGDP = gdpRows.at(-1);
-        const prevGDP = gdpRows.at(-2);
-        const lastFDI = investmentData.at(-1);
-        const prevFDI = investmentData.at(-2);
-        const lastInflation = inflationData.at(-1);
-        const prevInflation = inflationData.at(-2);
-
-        const dashboardStats: DashboardStats = {
-          gdpGrowthPct: lastGDP?.gdpGrowthPct ?? 0,
-          gdpGrowthChange:
-            lastGDP && prevGDP && prevGDP.gdpGrowthPct != null && lastGDP.gdpGrowthPct != null
-              ? `${lastGDP.gdpGrowthPct - prevGDP.gdpGrowthPct >= 0 ? '+' : ''}${(lastGDP.gdpGrowthPct - prevGDP.gdpGrowthPct).toFixed(1)}%`
-              : '—',
-          fdiInflow: lastFDI ? `$${lastFDI.foreign}M` : '—',
-          fdiChange:
-            lastFDI && prevFDI
-              ? `${lastFDI.foreign >= prevFDI.foreign ? '+' : ''}${(((lastFDI.foreign - prevFDI.foreign) / Math.abs(prevFDI.foreign)) * 100).toFixed(1)}%`
-              : '—',
-          inflationRate: lastInflation?.rate ?? 0,
-          inflationChange:
-            lastInflation && prevInflation
-              ? `${lastInflation.rate >= prevInflation.rate ? '+' : ''}${(lastInflation.rate - prevInflation.rate).toFixed(1)}%`
-              : '—',
-          totalProjects: 0,
-          period: 'Q2 2026',
-          lastUpdated: new Date().toISOString(),
-          dataSource: 'upload',
-        };
-
-        const economicData: EconomicData = {
-          gdpData: gdpData.length > 0 ? gdpData : [],
-          investmentData,
-          inflationData,
-          summary: `Uploaded ${file.name}. Parsed ${gdpRows.length} GDP rows from "${gdpSheetKey}".${investmentData.length ? ` ${investmentData.length} investment quarters.` : ''}${inflationData.length ? ` ${inflationData.length} inflation months.` : ''}`,
-        };
-
-        setData(economicData);
-        setFullPayload({ gdpHistorical, dashboardStats });
-        setUploadStatus('success');
-      } catch (err) {
-        console.error('Failed to parse file:', err);
-        setUploadStatus('error');
-      }
-    };
-    reader.onerror = () => setUploadStatus('error');
-    reader.readAsArrayBuffer(file);
-    e.target.value = '';
-  };
+  // ── Export XLSX ────────────────────────────────────────────────────────────
 
   const downloadXLSX = () => {
     if (!data) return;
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(data.gdpData), 'GDP Data');
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(data.investmentData), 'Investment');
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(data.inflationData), 'Inflation');
-    XLSX.writeFile(workbook, 'Batam_Economic_Data_Ingested.xlsx');
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.gdpData), 'GDP');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.investmentData), 'Investment');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.inflationData), 'Inflation');
+    XLSX.writeFile(wb, 'Batam_Economic_Data.xlsx');
   };
 
+  // ─── Render ──────────────────────────────────────────────────────────────
+
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-slate-100">Data Ingestion</h2>
-        <p className="text-slate-400 mt-2">
-          Run an AI-powered web search to pull live Batam FTZ economic data, or upload your own
-          XLSX / CSV file. Both paths update every section of the dashboard and report.
+        <p className="text-slate-400 mt-1 text-sm">
+          Upload economic documents (PDF, Excel, CSV, images) to auto-populate the dashboard, or
+          fetch the latest Batam FTZ news.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Genspark + Claude Superagent Card */}
-        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 backdrop-blur-sm flex flex-col space-y-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-lg">
-                <RefreshCw size={22} className={isSearching ? 'animate-spin' : ''} />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-slate-200">AI Superagent Search</h3>
-                <p className="text-sm text-slate-400">Genspark + Claude — live Batam data</p>
-              </div>
-            </div>
-            {searchStatus === 'success' && data && data.gdpData.length > 0 && (
-              <button
-                onClick={downloadXLSX}
-                className="flex items-center space-x-2 text-sm text-emerald-400 hover:text-emerald-300 bg-emerald-400/10 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                <Download size={16} />
-                <span>Export XLSX</span>
-              </button>
-            )}
-          </div>
-
-          <p className="text-sm text-slate-400 flex-1">
-            Searches the web via{' '}
-            <code className="bg-slate-800 text-indigo-300 px-1 py-0.5 rounded">@genspark/cli</code>
-            , then uses Claude to extract and structure a complete economic intelligence payload —
-            GDP, investment, inflation, infrastructure, geopolitical events, sector activity, and
-            macro trend grid.
-          </p>
-
-          {searchStatus === 'error' && (
-            <div className="flex items-center space-x-2 text-rose-400 bg-rose-400/10 p-3 rounded-lg text-sm border border-rose-400/20">
-              <AlertCircle size={16} />
-              <span>Search failed. Check the terminal for details.</span>
-            </div>
-          )}
-
-          {searchStatus === 'success' && (
-            <div className="flex items-center space-x-2 text-emerald-400 bg-emerald-400/10 p-3 rounded-lg text-sm border border-emerald-400/20">
-              <CheckCircle2 size={16} />
-              <span>All sections updated with live data.</span>
-            </div>
-          )}
-
+      {/* Tabs */}
+      <div className="flex gap-1 bg-slate-900/50 border border-slate-800 p-1 rounded-xl w-fit">
+        {(['documents', 'news'] as const).map((tab) => (
           <button
-            onClick={handleGensparkSearch}
-            disabled={isSearching}
-            className={`w-full py-2.5 rounded-lg text-sm font-medium transition-all ${
-              isSearching
-                ? 'bg-indigo-500/40 text-indigo-200 cursor-not-allowed'
-                : 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.3)]'
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+              activeTab === tab
+                ? 'bg-indigo-500 text-white shadow'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            {isSearching ? 'Collecting data…' : 'Run AI Search & Refresh Dashboard'}
+            {tab === 'documents' ? '📄 Document Analysis' : '📰 News Intelligence'}
           </button>
-        </div>
-
-        {/* Live terminal */}
-        <div className="bg-black/80 border border-slate-800 rounded-xl p-4 backdrop-blur-sm flex flex-col font-mono text-xs overflow-hidden h-[300px]">
-          <div className="flex items-center space-x-2 text-slate-500 border-b border-slate-800 pb-2 mb-2">
-            <Terminal size={14} />
-            <span>Agent Output</span>
-          </div>
-          <div className="flex-1 overflow-y-auto space-y-1 text-slate-300">
-            {logs.length === 0 && !isSearching && (
-              <div className="text-slate-600 italic">Waiting for search…</div>
-            )}
-            {logs.map((log, i) => (
-              <div key={i} className="break-all leading-relaxed">
-                <span className="text-indigo-500 select-none">› </span>
-                {log}
-              </div>
-            ))}
-            {isSearching && <div className="text-indigo-400 animate-pulse">█</div>}
-            <div ref={logsEndRef} />
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* Manual Upload Card */}
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 backdrop-blur-sm max-w-lg">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="p-3 bg-blue-500/10 text-blue-400 rounded-lg">
-            <FileSpreadsheet size={22} />
+      {/* ── Documents Tab ─────────────────────────────────────────────────── */}
+      {activeTab === 'documents' && (
+        <div className="space-y-6">
+          {/* Drop zone */}
+          <div
+            onDrop={onDrop}
+            onDragOver={(e) => e.preventDefault()}
+            onClick={() => fileInputRef.current?.click()}
+            className="border-2 border-dashed border-slate-700 hover:border-indigo-500/60 transition-colors rounded-2xl p-10 flex flex-col items-center justify-center text-center cursor-pointer group"
+          >
+            <UploadCloud
+              size={40}
+              className="text-slate-600 group-hover:text-indigo-400 mb-3 transition-colors"
+            />
+            <p className="text-slate-300 font-semibold">
+              Drop files here or click to browse
+            </p>
+            <p className="text-slate-500 text-sm mt-1">
+              PDF · Excel (XLSX) · CSV · PNG / JPG — multiple files supported
+            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.webp"
+              className="hidden"
+              onChange={(e) => e.target.files && addFiles(e.target.files)}
+            />
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-slate-200">Manual Excel / CSV Upload</h3>
-            <p className="text-sm text-slate-400">
-              Auto-detects GDP, investment &amp; inflation sheets
+
+          {/* File list */}
+          {files.length > 0 && (
+            <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-300">
+                  {files.length} file{files.length !== 1 ? 's' : ''} selected
+                </span>
+                <button
+                  onClick={() => { setFiles([]); setAnalysisStatus('idle'); }}
+                  className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  Clear all
+                </button>
+              </div>
+              <ul className="divide-y divide-slate-800/60">
+                {files.map((entry) => (
+                  <li key={entry.id} className="flex items-center gap-3 px-4 py-3">
+                    {fileIcon(entry.file)}
+                    <span className="flex-1 text-sm text-slate-300 truncate">
+                      {entry.file.name}
+                    </span>
+                    <span className="text-xs text-slate-500 shrink-0">
+                      {formatBytes(entry.file.size)}
+                    </span>
+                    {entry.status === 'done' && <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />}
+                    {entry.status === 'error' && <AlertCircle size={15} className="text-rose-400 shrink-0" />}
+                    {entry.status === 'pending' && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); removeFile(entry.id); }}
+                        className="text-slate-600 hover:text-slate-300 transition-colors shrink-0"
+                      >
+                        <X size={15} />
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Status + action row */}
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleAnalyze}
+              disabled={!files.length || analyzing}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                !files.length || analyzing
+                  ? 'bg-indigo-500/30 text-indigo-300 cursor-not-allowed'
+                  : 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]'
+              }`}
+            >
+              <Sparkles size={15} className={analyzing ? 'animate-pulse' : ''} />
+              {analyzing ? 'Analysing…' : 'Analyse Files & Update Dashboard'}
+            </button>
+
+            {analysisStatus === 'success' && data && data.gdpData.length > 0 && (
+              <button
+                onClick={downloadXLSX}
+                className="flex items-center gap-2 text-sm text-emerald-400 hover:text-emerald-300 bg-emerald-400/10 px-3 py-2 rounded-lg transition-colors"
+              >
+                <Download size={15} />
+                Export XLSX
+              </button>
+            )}
+
+            {analysisStatus === 'success' && (
+              <span className="flex items-center gap-1.5 text-sm text-emerald-400">
+                <CheckCircle2 size={15} /> All sections updated
+              </span>
+            )}
+            {analysisStatus === 'error' && (
+              <span className="flex items-center gap-1.5 text-sm text-rose-400">
+                <AlertCircle size={15} /> Analysis failed — see log
+              </span>
+            )}
+          </div>
+
+          {/* Analysis log */}
+          {analysisLog.length > 0 && (
+            <div className="bg-black/70 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 space-y-1 max-h-40 overflow-y-auto">
+              {analysisLog.map((line, i) => (
+                <div key={i}>
+                  <span className="text-indigo-500 select-none">› </span>
+                  {line}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Help text */}
+          <div className="bg-slate-900/30 border border-slate-800/50 rounded-xl p-4 text-xs text-slate-500 space-y-1">
+            <p className="font-medium text-slate-400">Supported file types</p>
+            <p>
+              <span className="text-rose-400">PDF</span> — annual reports, BPS publications, government documents, presentations
+            </p>
+            <p>
+              <span className="text-emerald-400">XLSX / CSV</span> — GDP tables, investment data, sector statistics (any sheet structure)
+            </p>
+            <p>
+              <span className="text-amber-400">Images</span> — infographics, chart screenshots, data slides — Claude reads them visually
+            </p>
+            <p className="pt-1 text-slate-600">
+              Claude will read all uploaded files simultaneously and extract every data point it can find. Missing fields are estimated from its knowledge.
             </p>
           </div>
         </div>
+      )}
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".xlsx,.csv"
-          className="hidden"
-          onChange={handleFileUpload}
-        />
+      {/* ── News Tab ──────────────────────────────────────────────────────── */}
+      {activeTab === 'news' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Fetch card */}
+            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-lg">
+                  <Newspaper size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-slate-200">Batam FTZ News Feed</h3>
+                  <p className="text-xs text-slate-400">Powered by Genspark + Claude</p>
+                </div>
+              </div>
 
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          className="border-2 border-dashed border-slate-700 hover:border-blue-500/50 transition-colors rounded-lg p-8 flex flex-col items-center justify-center text-center cursor-pointer group"
-        >
-          {uploadStatus === 'uploading' ? (
-            <>
-              <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mb-3" />
-              <p className="text-sm font-medium text-blue-300">Parsing {uploadedFileName}…</p>
-            </>
-          ) : uploadStatus === 'success' ? (
-            <>
-              <CheckCircle2 size={32} className="text-emerald-400 mb-2" />
-              <p className="text-sm font-medium text-emerald-300">{uploadedFileName}</p>
-              <p className="text-xs text-slate-400 mt-1">Data loaded — click to replace</p>
-            </>
-          ) : uploadStatus === 'error' ? (
-            <>
-              <AlertCircle size={32} className="text-rose-400 mb-2" />
-              <p className="text-sm font-medium text-rose-300">Parse failed. Try another file.</p>
-            </>
-          ) : (
-            <>
-              <UploadCloud
-                size={32}
-                className="text-slate-500 group-hover:text-blue-400 mb-2 transition-colors"
-              />
-              <p className="text-sm font-medium text-slate-300">Click to upload or drag & drop</p>
-              <p className="text-xs text-slate-500 mt-1">
-                XLSX / CSV · GDP, Investment &amp; Inflation sheets auto-detected
+              <p className="text-sm text-slate-400">
+                Searches news aggregators (Reuters, Jakarta Post, Straits Times, Business Times) for
+                the latest Batam FTZ economic, investment, and infrastructure news.
               </p>
-            </>
+
+              {newsStatus === 'success' && (
+                <div className="flex items-center gap-2 text-emerald-400 text-sm">
+                  <CheckCircle2 size={15} />
+                  {newsItems.length} news items fetched
+                </div>
+              )}
+              {newsStatus === 'error' && (
+                <div className="flex items-center gap-2 text-rose-400 text-sm">
+                  <AlertCircle size={15} />
+                  Fetch failed — see terminal
+                </div>
+              )}
+
+              <button
+                onClick={handleFetchNews}
+                disabled={fetchingNews}
+                className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  fetchingNews
+                    ? 'bg-indigo-500/30 text-indigo-300 cursor-not-allowed'
+                    : 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.3)]'
+                }`}
+              >
+                <RefreshCw size={15} className={fetchingNews ? 'animate-spin' : ''} />
+                {fetchingNews ? 'Fetching…' : 'Fetch Latest News'}
+              </button>
+            </div>
+
+            {/* Terminal */}
+            <div className="bg-black/80 border border-slate-800 rounded-xl p-4 font-mono text-xs h-[220px] flex flex-col">
+              <div className="flex items-center gap-2 text-slate-500 border-b border-slate-800 pb-2 mb-2">
+                <Terminal size={13} />
+                <span>Agent Output</span>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-1 text-slate-300">
+                {newsLog.length === 0 && !fetchingNews && (
+                  <span className="text-slate-600 italic">Waiting for request…</span>
+                )}
+                {newsLog.map((line, i) => (
+                  <div key={i}>
+                    <span className="text-indigo-500 select-none">› </span>
+                    {line}
+                  </div>
+                ))}
+                {fetchingNews && <div className="text-indigo-400 animate-pulse">█</div>}
+                <div ref={newsLogEndRef} />
+              </div>
+            </div>
+          </div>
+
+          {/* News items */}
+          {newsItems.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-slate-300">
+                {newsItems.length} News Items
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {newsItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span
+                        className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[item.category] ?? 'bg-slate-700 text-slate-300'}`}
+                      >
+                        {item.category}
+                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span
+                          className={`w-2 h-2 rounded-full ${RELEVANCE_DOT[item.relevance] ?? 'bg-slate-500'}`}
+                        />
+                        <span className="text-xs text-slate-500 capitalize">{item.relevance}</span>
+                      </div>
+                    </div>
+                    <h4 className="text-sm font-semibold text-slate-100 leading-snug mb-1">
+                      {item.title}
+                    </h4>
+                    <p className="text-xs text-slate-400 leading-relaxed mb-2">
+                      {item.summary}
+                    </p>
+                    <p className="text-xs text-slate-600">
+                      {item.source} · {item.date}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {newsItems.length === 0 && newsStatus !== 'error' && (
+            <div className="text-center py-12 text-slate-600">
+              <Newspaper size={36} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">Click "Fetch Latest News" to load the news feed.</p>
+            </div>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -123,3 +123,23 @@ export interface DashboardStats {
   lastUpdated: string;
   dataSource: 'genspark' | 'upload' | 'manual';
 }
+
+export type NewsCategory =
+  | 'fdi'
+  | 'infrastructure'
+  | 'policy'
+  | 'sector'
+  | 'geopolitics'
+  | 'economy';
+
+export type NewsRelevance = 'high' | 'medium' | 'low';
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  summary: string;
+  source: string;
+  date: string;
+  category: NewsCategory;
+  relevance: NewsRelevance;
+}
