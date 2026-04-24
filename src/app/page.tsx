@@ -365,7 +365,7 @@ export default function Dashboard() {
                     alt=""
                     className="w-full h-full object-cover opacity-70"
                     loading="lazy"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    onError={(e) => { const el = e.target as HTMLImageElement; el.parentElement && (el.parentElement.style.display = 'none'); }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0b1829] to-transparent" />
                 </div>
@@ -410,7 +410,7 @@ export default function Dashboard() {
                           alt=""
                           className="w-full h-full object-cover opacity-60"
                           loading="lazy"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          onError={(e) => { const el = e.target as HTMLImageElement; el.parentElement && (el.parentElement.style.display = 'none'); }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-[#060e1e] to-transparent" />
                       </div>

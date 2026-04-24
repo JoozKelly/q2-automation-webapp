@@ -19,6 +19,36 @@ async function tryGenspark(query: string, timeoutMs = 20000): Promise<string> {
   });
 }
 
+// ── Extract real URLs from Genspark JSON output ───────────────────────────────
+
+interface GensparkItem {
+  title?: string;
+  url?: string;
+  link?: string;
+  href?: string;
+  source?: string;
+}
+
+function extractSourceUrls(raw: string): Array<{ title: string; url: string }> {
+  // Try to parse as JSON (Genspark --output json)
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    const items: GensparkItem[] = Array.isArray(parsed)
+      ? (parsed as GensparkItem[])
+      : ((parsed as Record<string, unknown>).results as GensparkItem[] ??
+         (parsed as Record<string, unknown>).items   as GensparkItem[] ??
+         (parsed as Record<string, unknown>).data    as GensparkItem[] ?? []);
+    const urls = items
+      .map((item) => ({ title: item.title ?? '', url: item.url ?? item.link ?? item.href ?? '' }))
+      .filter((x) => x.url.startsWith('http'));
+    if (urls.length > 0) return urls;
+  } catch { /* fall through to regex */ }
+
+  // Fallback: regex-extract all URLs from raw text
+  const found = raw.match(/https?:\/\/[^\s"'<>)]+/g) ?? [];
+  return [...new Set(found)].map((url) => ({ title: '', url }));
+}
+
 // ── Largest-candidate array extractor ────────────────────────────────────────
 
 function extractArray(text: string): string | null {
@@ -72,10 +102,15 @@ const NEWS_QUERIES = [
   'Indonesia Batam economic development industrial zone investment Q2 2026',
 ];
 
-function buildNewsPrompt(rawData: string): string {
+function buildNewsPrompt(rawData: string, sourceUrls: Array<{ title: string; url: string }>): string {
+  const urlBlock = sourceUrls.length > 0
+    ? `\nReal URLs found in web search results (use these for sourceUrl wherever they match the article):\n${
+        sourceUrls.slice(0, 20).map((u) => `- ${u.url}${u.title ? `  [${u.title}]` : ''}`).join('\n')
+      }\n`
+    : '';
   return `You are an economic news analyst covering Batam Free Trade Zone, Indonesia.
 Today is April 2026. Reporting period: Q2 2026.
-${rawData ? `\nLive web search results:\n${rawData.slice(0, 5000)}\n` : ''}
+${rawData ? `\nLive web search results:\n${rawData.slice(0, 4000)}\n` : ''}${urlBlock}
 Extract or generate 8 recent news items relevant to Batam FTZ tenants and investors.
 
 CRITICAL FORMATTING RULES — output fed directly to JSON.parse():
@@ -173,8 +208,8 @@ Return exactly this structure (imageSearchTerm should be 2–3 keywords for find
 Use the web data above where available; fill gaps from your knowledge.
 Category must be one of: fdi, infrastructure, policy, sector, geopolitics, economy
 Relevance must be one of: high, medium, low
-imageSearchTerm: 2-3 keywords describing a relevant photo for the article (e.g. "solar panels factory", "data center servers")
-sourceUrl: direct URL to the article from web search results; if unavailable, construct a realistic search URL like https://www.reuters.com/search/news/?query=Batam+FTZ`;
+imageSearchTerm: 2-3 English keywords for a relevant photo (e.g. "solar panels factory", "data center servers")
+sourceUrl: PRIORITY ORDER — (1) use a matching URL from the "Real URLs" list above if the domain or title matches, (2) otherwise use https://news.google.com/search?q={URL-encoded article title}&hl=en — NEVER invent a fake article path`;
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────
@@ -214,6 +249,12 @@ export async function POST(request: Request) {
           if (i < queries.length - 1) send('[LOG] No results — trying next query...');
         }
 
+        // Extract real article URLs from Genspark JSON before passing to Claude
+        const sourceUrls = rawNews ? extractSourceUrls(rawNews) : [];
+        if (sourceUrls.length > 0) {
+          send(`[LOG] Extracted ${sourceUrls.length} source URLs from search results.`);
+        }
+
         if (!rawNews) {
           send('[LOG] Web search exhausted — generating news from AI knowledge base...');
         }
@@ -231,18 +272,22 @@ export async function POST(request: Request) {
           const message = await client.messages.create({
             model: 'claude-sonnet-4-6',
             max_tokens: 3500,
-            messages: [{ role: 'user', content: buildNewsPrompt(rawNews) }],
+            messages: [{ role: 'user', content: buildNewsPrompt(rawNews, sourceUrls) }],
           });
 
           const raw = message.content[0].type === 'text' ? message.content[0].text : '[]';
           try {
             parsed = repairAndParseArray(raw);
-            // Attach Unsplash image URLs from imageSearchTerm
+            // Attach loremflickr image URLs (Unsplash Source API is deprecated)
             parsed = (parsed as Record<string, unknown>[]).map((item) => {
-              const term = (item.imageSearchTerm as string) ?? (item.category as string) ?? 'indonesia economy';
+              const term = ((item.imageSearchTerm as string) ?? (item.category as string) ?? 'indonesia economy')
+                .toLowerCase()
+                .replace(/[^a-z0-9 ]/g, '')
+                .trim()
+                .replace(/\s+/g, ',');
               return {
                 ...item,
-                imageUrl: `https://source.unsplash.com/featured/800x400/?${encodeURIComponent(term + ',indonesia')}`,
+                imageUrl: `https://loremflickr.com/800/400/${encodeURIComponent(term)}?lock=${item.id ?? Math.random()}`,
               };
             });
             jsonStr = JSON.stringify(parsed);

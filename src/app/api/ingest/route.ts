@@ -214,7 +214,7 @@ Schema (replace every <...> placeholder with actual values):
 
 gdpData: extend to cover ${period}.
 gdpHistorical: cover the full requested range ${period}.
-geoEvents sourceUrl: the direct article URL from web data if available, or a plausible search URL.`;
+geoEvents sourceUrl: use a real URL from the web data if found; otherwise use https://news.google.com/search?q={URL-encoded event title}&hl=en — NEVER invent a fake article path.`;
 }
 
 // ── BPS queries (tried sequentially until one returns data) ───────────────────
