@@ -1,0 +1,23 @@
+Please act as my assistant for building the Q2 Economic Report Automation Web App.
+
+First, initiate a `CLAUDE.md` file to keep progress and context on our project from start to end. 
+Update the `CLAUDE.md` file to indicate that as you work, you need to commit things to Git and push them to Github regularly with clean commit messages so we never lose the status or work that we have done. 
+Initialize a git repository if one doesn't exist.
+
+Then, let's brainstorm and begin scaffolding a Next.js web application. 
+The goal of this web app is to automate the end-to-end process of generating a quarterly economic report for Batam tenants.
+We want to include:
+1. Data ingestion (accepting data uploads gathered via Genspark.ai).
+2. A Dashboard using Recharts or Chart.js for data visualization (GDP, inflation, investment, etc.).
+3. A Report Builder & Copywriting Integration to synthesize AI-generated stories.
+4. PDF Generation to export the final styled report mimicking our PPT template.
+
+Please also read the context from our previous reports and the new flow to understand our requirements:
+- Q1 Report Flow: c:\Users\joozk\OneDrive\Desktop\devfolio\Q1EXPREPORT\CEO Brief Flow 14FEB2026.pdf
+- New Q2 Report Flow: c:\Users\joozk\OneDrive\Desktop\devfolio\BATAMOUTLOK_Q22026 FLOW.pdf
+- Q1 Export Sample: c:\Users\joozk\OneDrive\Desktop\devfolio\Q1EXPREPORT\BATAMOUTLOOK_Q12026_EXP.pdf
+- Sample Data: c:\Users\joozk\OneDrive\Desktop\devfolio\Q1EXPREPORT\GDP Kota Batam 1990 - 2024_v12.xlsx
+
+Consider using MCPs and online skills, or developing your own skills, to aid in data collection, excel transformation, visualization, and copywriting.
+
+Let's start by initializing the repo, creating the CLAUDE.md, and then giving me an outline of the Next.js app architecture and how we will tackle the first task.
