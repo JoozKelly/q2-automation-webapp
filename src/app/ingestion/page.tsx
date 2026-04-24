@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   UploadCloud, FileText, FileSpreadsheet, Image, X,
   Sparkles, Newspaper, CheckCircle2, AlertCircle, Terminal,
-  Download, RefreshCw,
+  Download, RefreshCw, Database, ChevronRight,
 } from 'lucide-react';
 import { useDataStore, EconomicData } from '@/context/store';
 import { useReportStore } from '@/store/reportStore';
@@ -32,7 +32,30 @@ interface IngestPayload {
   infraProjects?: InfraProject[];
   geoEvents?: GeoEvent[];
   sectorSummaries?: SectorSummary[];
+  newsItems?: NewsItem[];
   summary?: string;
+}
+
+type SectionKey = 'dashboardStats' | 'chartData' | 'macroGrid' | 'sectorSummaries' | 'infraProjects' | 'geoEvents';
+
+const SECTION_LABELS: Record<SectionKey, { label: string; description: string }> = {
+  dashboardStats:  { label: 'Dashboard Stats',        description: 'GDP growth, FDI inflow, inflation rate, active projects' },
+  chartData:       { label: 'Chart Data',             description: 'GDP historical, investment, and inflation time-series' },
+  macroGrid:       { label: 'Macro Indicator Grid',   description: 'Multi-period signal grid for macro and financial indicators' },
+  sectorSummaries: { label: 'Sector Summaries',       description: 'EMS, Solar, Data Centers, BESS, Medical, E-Cig project counts' },
+  infraProjects:   { label: 'Infrastructure Projects', description: 'Active government and infrastructure project tracker' },
+  geoEvents:       { label: 'Geopolitical Events',    description: 'Key events and their FDI / GDP / tenant-risk impact' },
+};
+
+function sectionPresent(payload: IngestPayload, key: SectionKey): boolean {
+  switch (key) {
+    case 'dashboardStats':  return !!payload.dashboardStats;
+    case 'chartData':       return !!(payload.gdpData?.length || payload.investmentData?.length || payload.inflationData?.length || payload.gdpHistorical?.length);
+    case 'macroGrid':       return !!payload.macroGrid?.length;
+    case 'sectorSummaries': return !!payload.sectorSummaries?.length;
+    case 'infraProjects':   return !!payload.infraProjects?.length;
+    case 'geoEvents':       return !!payload.geoEvents?.length;
+  }
 }
 
 // ─── File type helpers ─────────────────────────────────────────────────────
@@ -52,8 +75,6 @@ function formatBytes(n: number) {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// ─── News category badge ────────────────────────────────────────────────────
-
 const CATEGORY_COLORS: Record<string, string> = {
   fdi:            'bg-blue-500/15 text-blue-300',
   infrastructure: 'bg-orange-500/15 text-orange-300',
@@ -69,17 +90,111 @@ const RELEVANCE_DOT: Record<string, string> = {
   low:    'bg-slate-500',
 };
 
+// ─── Selection Panel ────────────────────────────────────────────────────────
+
+function SelectionPanel({
+  payload,
+  selected,
+  onToggle,
+  onApply,
+  onDiscard,
+}: {
+  payload: IngestPayload;
+  selected: Set<SectionKey>;
+  onToggle: (k: SectionKey) => void;
+  onApply: () => void;
+  onDiscard: () => void;
+}) {
+  const allKeys = Object.keys(SECTION_LABELS) as SectionKey[];
+  const available = allKeys.filter((k) => sectionPresent(payload, k));
+
+  return (
+    <div className="bg-[#0c1425] border border-indigo-500/30 rounded-2xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#1a2744] flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-100">Choose Sections to Apply</h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Select which data sections to push to the dashboard and Report Builder.
+          </p>
+        </div>
+        <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">
+          {selected.size} of {available.length} selected
+        </span>
+      </div>
+
+      <div className="p-4 space-y-2">
+        {allKeys.map((key) => {
+          const present = sectionPresent(payload, key);
+          const checked = selected.has(key);
+          return (
+            <button
+              key={key}
+              onClick={() => present && onToggle(key)}
+              disabled={!present}
+              className={`w-full flex items-start gap-3 px-4 py-3 rounded-xl text-left transition-all border ${
+                !present
+                  ? 'opacity-30 cursor-not-allowed border-transparent'
+                  : checked
+                  ? 'bg-indigo-500/10 border-indigo-500/30'
+                  : 'border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/30'
+              }`}
+            >
+              <div className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                checked ? 'bg-indigo-500 border-indigo-500' : 'border-slate-600'
+              }`}>
+                {checked && <CheckCircle2 size={12} className="text-white" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium ${checked ? 'text-slate-100' : 'text-slate-300'}`}>
+                  {SECTION_LABELS[key].label}
+                  {!present && <span className="ml-2 text-xs text-slate-600">(not detected)</span>}
+                </p>
+                <p className="text-xs text-slate-500 mt-0.5">{SECTION_LABELS[key].description}</p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="px-5 py-4 border-t border-[#1a2744] flex items-center gap-3">
+        <button
+          onClick={onApply}
+          disabled={selected.size === 0}
+          className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+            selected.size > 0
+              ? 'bg-indigo-500 hover:bg-indigo-600 text-white'
+              : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+          }`}
+        >
+          <ChevronRight size={15} />
+          Apply {selected.size} Section{selected.size !== 1 ? 's' : ''} to Dashboard
+        </button>
+        <button
+          onClick={onDiscard}
+          className="text-sm text-slate-500 hover:text-slate-300 transition-colors"
+        >
+          Discard
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ──────────────────────────────────────────────────────────────────
 
 export default function DataIngestion() {
-  const [activeTab, setActiveTab] = useState<'documents' | 'news'>('documents');
+  const [activeTab, setActiveTab] = useState<'documents' | 'news' | 'bps'>('documents');
 
   // Document analysis state
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
-  const [analysisStatus, setAnalysisStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [analysisLog, setAnalysisLog] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // BPS search state
+  const [bpsSearching, setBpsSearching] = useState(false);
+  const [bpsLog, setBpsLog] = useState<string[]>([]);
+  const bpsLogEndRef = useRef<HTMLDivElement>(null);
 
   // News state
   const [fetchingNews, setFetchingNews] = useState(false);
@@ -87,13 +202,17 @@ export default function DataIngestion() {
   const [newsLog, setNewsLog] = useState<string[]>([]);
   const newsLogEndRef = useRef<HTMLDivElement>(null);
 
-  const { data, setData } = useDataStore();
-  const { setFullPayload, newsItems, setNewsItems } = useReportStore();
+  // Pending payload (selection before apply)
+  const [pendingPayload, setPendingPayload] = useState<IngestPayload | null>(null);
+  const [selectedSections, setSelectedSections] = useState<Set<SectionKey>>(new Set());
+  const [applyStatus, setApplyStatus] = useState<'idle' | 'applied'>('idle');
 
-  // Auto-scroll news log
-  useEffect(() => {
-    newsLogEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [newsLog]);
+  const { data, setData } = useDataStore();
+  const reportStore = useReportStore();
+  const { newsItems, setNewsItems } = reportStore;
+
+  useEffect(() => { newsLogEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [newsLog]);
+  useEffect(() => { bpsLogEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [bpsLog]);
 
   // ── Drag & drop ───────────────────────────────────────────────────────────
 
@@ -105,7 +224,8 @@ export default function DataIngestion() {
       status: 'pending',
     }));
     setFiles((prev) => [...prev, ...entries]);
-    setAnalysisStatus('idle');
+    setPendingPayload(null);
+    setApplyStatus('idle');
   }, []);
 
   const onDrop = useCallback(
@@ -116,27 +236,47 @@ export default function DataIngestion() {
     [addFiles]
   );
 
-  const removeFile = (id: string) =>
-    setFiles((prev) => prev.filter((f) => f.id !== id));
+  const removeFile = (id: string) => setFiles((prev) => prev.filter((f) => f.id !== id));
 
-  // ── Apply payload to stores ────────────────────────────────────────────────
+  // ── Receive payload → show selection panel ─────────────────────────────
 
-  const applyPayload = (payload: IngestPayload) => {
-    const economicData: EconomicData = {
-      gdpData:        payload.gdpData        ?? [],
-      investmentData: payload.investmentData ?? [],
-      inflationData:  payload.inflationData  ?? [],
-      summary:        payload.summary        ?? '',
-    };
-    setData(economicData);
-    setFullPayload({
-      gdpHistorical:   payload.gdpHistorical,
-      infraProjects:   payload.infraProjects,
-      geoEvents:       payload.geoEvents,
-      macroGrid:       payload.macroGrid,
-      sectorSummaries: payload.sectorSummaries,
-      dashboardStats:  payload.dashboardStats,
+  const receivePendingPayload = (payload: IngestPayload) => {
+    setPendingPayload(payload);
+    setApplyStatus('idle');
+    // Pre-select all detected sections
+    const allKeys = Object.keys(SECTION_LABELS) as SectionKey[];
+    const present = new Set(allKeys.filter((k) => sectionPresent(payload, k)));
+    setSelectedSections(present);
+  };
+
+  // ── Apply selected sections to stores ──────────────────────────────────
+
+  const applySelectedSections = () => {
+    if (!pendingPayload) return;
+    const p = pendingPayload;
+
+    if (selectedSections.has('chartData')) {
+      const economicData: EconomicData = {
+        gdpData:        p.gdpData        ?? [],
+        investmentData: p.investmentData ?? [],
+        inflationData:  p.inflationData  ?? [],
+        summary:        p.summary        ?? '',
+      };
+      setData(economicData);
+    }
+
+    reportStore.setFullPayload({
+      ...(selectedSections.has('dashboardStats')  ? { dashboardStats:  p.dashboardStats }  : {}),
+      ...(selectedSections.has('chartData')       ? { gdpHistorical:   p.gdpHistorical }   : {}),
+      ...(selectedSections.has('macroGrid')       ? { macroGrid:       p.macroGrid }       : {}),
+      ...(selectedSections.has('sectorSummaries') ? { sectorSummaries: p.sectorSummaries } : {}),
+      ...(selectedSections.has('infraProjects')   ? { infraProjects:   p.infraProjects }   : {}),
+      ...(selectedSections.has('geoEvents')       ? { geoEvents:       p.geoEvents }       : {}),
+      ...(selectedSections.has('geoEvents') && p.newsItems ? { newsItems: p.newsItems } : {}),
     });
+
+    setApplyStatus('applied');
+    setPendingPayload(null);
   };
 
   // ── Analyze files ──────────────────────────────────────────────────────────
@@ -144,7 +284,8 @@ export default function DataIngestion() {
   const handleAnalyze = async () => {
     if (!files.length) return;
     setAnalyzing(true);
-    setAnalysisStatus('idle');
+    setPendingPayload(null);
+    setApplyStatus('idle');
     setAnalysisLog(['Reading files…']);
 
     const form = new FormData();
@@ -154,21 +295,62 @@ export default function DataIngestion() {
       setAnalysisLog((l) => [...l, `Sending ${files.length} file(s) to Claude for analysis…`]);
       const res = await fetch('/api/analyze-files', { method: 'POST', body: form });
       const json = await res.json();
-
       if (!res.ok) throw new Error(json.error ?? 'Analysis failed');
 
-      setAnalysisLog((l) => [...l, 'Extracting economic data…', 'Populating dashboard…']);
-      applyPayload(json);
-
+      setAnalysisLog((l) => [...l, 'Extracting economic data…', 'Analysis complete — choose sections to apply below.']);
       setFiles((prev) => prev.map((f) => ({ ...f, status: 'done' as const })));
-      setAnalysisStatus('success');
-      setAnalysisLog((l) => [...l, '✓ All sections updated.']);
+      receivePendingPayload(json as IngestPayload);
     } catch (err) {
-      setAnalysisStatus('error');
       setFiles((prev) => prev.map((f) => ({ ...f, status: 'error' as const })));
       setAnalysisLog((l) => [...l, `Error: ${err instanceof Error ? err.message : String(err)}`]);
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  // ── BPS Search ─────────────────────────────────────────────────────────────
+
+  const handleBPSSearch = async () => {
+    setBpsSearching(true);
+    setPendingPayload(null);
+    setApplyStatus('idle');
+    setBpsLog([]);
+
+    try {
+      const res = await fetch('/api/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bps: true }),
+      });
+      if (!res.body) throw new Error('No response body');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        full += chunk;
+        for (const line of chunk.split('\n')) {
+          if (line.startsWith('[LOG]'))
+            setBpsLog((prev) => [...prev, line.replace('[LOG]', '').trim()]);
+          if (line.startsWith('[ERROR]'))
+            setBpsLog((prev) => [...prev, `⚠ ${line.replace('[ERROR]', '').trim()}`]);
+        }
+      }
+
+      const payloadLine = full.split('\n').find((l) => l.startsWith('[PAYLOAD]'));
+      if (!payloadLine) throw new Error('No payload returned');
+
+      const payload: IngestPayload = JSON.parse(payloadLine.slice('[PAYLOAD] '.length));
+      setBpsLog((prev) => [...prev, '✓ Data extracted — choose sections to apply below.']);
+      receivePendingPayload(payload);
+    } catch (err) {
+      setBpsLog((prev) => [...prev, `Error: ${err instanceof Error ? err.message : String(err)}`]);
+    } finally {
+      setBpsSearching(false);
     }
   };
 
@@ -229,6 +411,12 @@ export default function DataIngestion() {
     XLSX.writeFile(wb, 'Batam_Economic_Data.xlsx');
   };
 
+  const TABS = [
+    { id: 'documents' as const, label: 'Document Analysis', icon: '📄' },
+    { id: 'bps'       as const, label: 'BPS Search',        icon: '🔍' },
+    { id: 'news'      as const, label: 'News Intelligence', icon: '📰' },
+  ];
+
   // ─── Render ──────────────────────────────────────────────────────────────
 
   return (
@@ -237,24 +425,24 @@ export default function DataIngestion() {
       <div>
         <h2 className="text-2xl font-bold text-slate-100">Data Ingestion</h2>
         <p className="text-slate-400 mt-1 text-sm">
-          Upload economic documents (PDF, Excel, CSV, images) to auto-populate the dashboard, or
-          fetch the latest Batam FTZ news.
+          Upload documents, search BPS Batam statistics, or fetch the latest news — then choose
+          exactly which sections to apply to the dashboard.
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-900/50 border border-slate-800 p-1 rounded-xl w-fit">
-        {(['documents', 'news'] as const).map((tab) => (
+      <div className="flex gap-1 bg-slate-900/50 border border-[#1a2744] p-1 rounded-xl w-fit">
+        {TABS.map((tab) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-              activeTab === tab
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === tab.id
                 ? 'bg-indigo-500 text-white shadow'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            {tab === 'documents' ? '📄 Document Analysis' : '📰 News Intelligence'}
+            {tab.icon} {tab.label}
           </button>
         ))}
       </div>
@@ -262,23 +450,15 @@ export default function DataIngestion() {
       {/* ── Documents Tab ─────────────────────────────────────────────────── */}
       {activeTab === 'documents' && (
         <div className="space-y-6">
-          {/* Drop zone */}
           <div
             onDrop={onDrop}
             onDragOver={(e) => e.preventDefault()}
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-slate-700 hover:border-indigo-500/60 transition-colors rounded-2xl p-10 flex flex-col items-center justify-center text-center cursor-pointer group"
+            className="border-2 border-dashed border-[#1a2744] hover:border-indigo-500/60 transition-colors rounded-2xl p-10 flex flex-col items-center justify-center text-center cursor-pointer group"
           >
-            <UploadCloud
-              size={40}
-              className="text-slate-600 group-hover:text-indigo-400 mb-3 transition-colors"
-            />
-            <p className="text-slate-300 font-semibold">
-              Drop files here or click to browse
-            </p>
-            <p className="text-slate-500 text-sm mt-1">
-              PDF · Excel (XLSX) · CSV · PNG / JPG — multiple files supported
-            </p>
+            <UploadCloud size={40} className="text-slate-600 group-hover:text-indigo-400 mb-3 transition-colors" />
+            <p className="text-slate-300 font-semibold">Drop files here or click to browse</p>
+            <p className="text-slate-500 text-sm mt-1">PDF · Excel (XLSX) · CSV · PNG / JPG</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -289,37 +469,29 @@ export default function DataIngestion() {
             />
           </div>
 
-          {/* File list */}
           {files.length > 0 && (
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+            <div className="bg-[#0c1425] border border-[#1a2744] rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#1a2744] flex items-center justify-between">
                 <span className="text-sm font-medium text-slate-300">
                   {files.length} file{files.length !== 1 ? 's' : ''} selected
                 </span>
                 <button
-                  onClick={() => { setFiles([]); setAnalysisStatus('idle'); }}
+                  onClick={() => { setFiles([]); setPendingPayload(null); setApplyStatus('idle'); }}
                   className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
                 >
                   Clear all
                 </button>
               </div>
-              <ul className="divide-y divide-slate-800/60">
+              <ul className="divide-y divide-[#1a2744]/60">
                 {files.map((entry) => (
                   <li key={entry.id} className="flex items-center gap-3 px-4 py-3">
                     {fileIcon(entry.file)}
-                    <span className="flex-1 text-sm text-slate-300 truncate">
-                      {entry.file.name}
-                    </span>
-                    <span className="text-xs text-slate-500 shrink-0">
-                      {formatBytes(entry.file.size)}
-                    </span>
+                    <span className="flex-1 text-sm text-slate-300 truncate">{entry.file.name}</span>
+                    <span className="text-xs text-slate-500 shrink-0">{formatBytes(entry.file.size)}</span>
                     {entry.status === 'done' && <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />}
                     {entry.status === 'error' && <AlertCircle size={15} className="text-rose-400 shrink-0" />}
                     {entry.status === 'pending' && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); removeFile(entry.id); }}
-                        className="text-slate-600 hover:text-slate-300 transition-colors shrink-0"
-                      >
+                      <button onClick={(e) => { e.stopPropagation(); removeFile(entry.id); }} className="text-slate-600 hover:text-slate-300 shrink-0">
                         <X size={15} />
                       </button>
                     )}
@@ -329,7 +501,6 @@ export default function DataIngestion() {
             </div>
           )}
 
-          {/* Status + action row */}
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleAnalyze}
@@ -341,10 +512,10 @@ export default function DataIngestion() {
               }`}
             >
               <Sparkles size={15} className={analyzing ? 'animate-pulse' : ''} />
-              {analyzing ? 'Analysing…' : 'Analyse Files & Update Dashboard'}
+              {analyzing ? 'Analysing…' : 'Analyse Files with Claude'}
             </button>
 
-            {analysisStatus === 'success' && data && data.gdpData.length > 0 && (
+            {applyStatus === 'applied' && data && data.gdpData.length > 0 && (
               <button
                 onClick={downloadXLSX}
                 className="flex items-center gap-2 text-sm text-emerald-400 hover:text-emerald-300 bg-emerald-400/10 px-3 py-2 rounded-lg transition-colors"
@@ -354,46 +525,127 @@ export default function DataIngestion() {
               </button>
             )}
 
-            {analysisStatus === 'success' && (
+            {applyStatus === 'applied' && (
               <span className="flex items-center gap-1.5 text-sm text-emerald-400">
-                <CheckCircle2 size={15} /> All sections updated
-              </span>
-            )}
-            {analysisStatus === 'error' && (
-              <span className="flex items-center gap-1.5 text-sm text-rose-400">
-                <AlertCircle size={15} /> Analysis failed — see log
+                <CheckCircle2 size={15} /> Dashboard updated
               </span>
             )}
           </div>
 
-          {/* Analysis log */}
           {analysisLog.length > 0 && (
-            <div className="bg-black/70 border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 space-y-1 max-h-40 overflow-y-auto">
+            <div className="bg-black/70 border border-[#1a2744] rounded-xl p-4 font-mono text-xs text-slate-300 space-y-1 max-h-40 overflow-y-auto">
               {analysisLog.map((line, i) => (
-                <div key={i}>
-                  <span className="text-indigo-500 select-none">› </span>
-                  {line}
-                </div>
+                <div key={i}><span className="text-indigo-500 select-none">› </span>{line}</div>
               ))}
             </div>
           )}
 
-          {/* Help text */}
-          <div className="bg-slate-900/30 border border-slate-800/50 rounded-xl p-4 text-xs text-slate-500 space-y-1">
+          {pendingPayload && (
+            <SelectionPanel
+              payload={pendingPayload}
+              selected={selectedSections}
+              onToggle={(k) => setSelectedSections((prev) => {
+                const next = new Set(prev);
+                next.has(k) ? next.delete(k) : next.add(k);
+                return next;
+              })}
+              onApply={applySelectedSections}
+              onDiscard={() => { setPendingPayload(null); setApplyStatus('idle'); }}
+            />
+          )}
+
+          <div className="bg-slate-900/30 border border-[#1a2744]/50 rounded-xl p-4 text-xs text-slate-500 space-y-1">
             <p className="font-medium text-slate-400">Supported file types</p>
-            <p>
-              <span className="text-rose-400">PDF</span> — annual reports, BPS publications, government documents, presentations
-            </p>
-            <p>
-              <span className="text-emerald-400">XLSX / CSV</span> — GDP tables, investment data, sector statistics (any sheet structure)
-            </p>
-            <p>
-              <span className="text-amber-400">Images</span> — infographics, chart screenshots, data slides — Claude reads them visually
-            </p>
-            <p className="pt-1 text-slate-600">
-              Claude will read all uploaded files simultaneously and extract every data point it can find. Missing fields are estimated from its knowledge.
-            </p>
+            <p><span className="text-rose-400">PDF</span> — BPS publications, annual reports, government documents</p>
+            <p><span className="text-emerald-400">XLSX / CSV</span> — GDP tables, investment data, sector statistics</p>
+            <p><span className="text-amber-400">Images</span> — infographics, chart screenshots, data slides</p>
           </div>
+        </div>
+      )}
+
+      {/* ── BPS Search Tab ────────────────────────────────────────────────── */}
+      {activeTab === 'bps' && (
+        <div className="space-y-6">
+          <div className="bg-[#0c1425] border border-[#1a2744] rounded-xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-blue-500/10 text-blue-400 rounded-lg">
+                <Database size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-slate-200">BPS Batam Statistics Search</h3>
+                <p className="text-xs text-slate-500">Searches BPS Batam via Genspark · Claude synthesis</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-400">
+              Runs targeted searches for BPS Batam (Badan Pusat Statistik) data using Genspark,
+              which can access BPS statistics via search-indexed snippets. Claude then synthesises
+              the results into structured economic indicators for Batam FTZ.
+            </p>
+
+            <div className="bg-slate-900/50 border border-[#1a2744] rounded-lg p-3 space-y-1.5">
+              <p className="text-xs font-medium text-slate-400">Queries being run:</p>
+              {[
+                '"BPS Batam" OR "batamkota.bps.go.id" PDRB pertumbuhan ekonomi 2024 2025',
+                'site:bps.go.id Batam Kepri GRDP growth manufacturing 2024 2025',
+              ].map((q, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs text-slate-500">
+                  <span className="text-indigo-500 shrink-0 mt-0.5">›</span>
+                  <span className="font-mono">{q}</span>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={handleBPSSearch}
+              disabled={bpsSearching}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                bpsSearching
+                  ? 'bg-blue-500/30 text-blue-300 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white shadow-[0_0_20px_rgba(59,130,246,0.3)]'
+              }`}
+            >
+              <RefreshCw size={15} className={bpsSearching ? 'animate-spin' : ''} />
+              {bpsSearching ? 'Searching BPS…' : 'Search BPS Batam'}
+            </button>
+          </div>
+
+          {bpsLog.length > 0 && (
+            <div className="bg-black/80 border border-[#1a2744] rounded-xl p-4 font-mono text-xs h-[200px] flex flex-col">
+              <div className="flex items-center gap-2 text-slate-500 border-b border-[#1a2744] pb-2 mb-2">
+                <Terminal size={13} />
+                <span>Search Agent Output</span>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-1 text-slate-300">
+                {bpsLog.map((line, i) => (
+                  <div key={i}><span className="text-blue-500 select-none">› </span>{line}</div>
+                ))}
+                {bpsSearching && <div className="text-blue-400 animate-pulse">█</div>}
+                <div ref={bpsLogEndRef} />
+              </div>
+            </div>
+          )}
+
+          {pendingPayload && activeTab === 'bps' && (
+            <SelectionPanel
+              payload={pendingPayload}
+              selected={selectedSections}
+              onToggle={(k) => setSelectedSections((prev) => {
+                const next = new Set(prev);
+                next.has(k) ? next.delete(k) : next.add(k);
+                return next;
+              })}
+              onApply={applySelectedSections}
+              onDiscard={() => { setPendingPayload(null); setApplyStatus('idle'); }}
+            />
+          )}
+
+          {applyStatus === 'applied' && (
+            <div className="flex items-center gap-2 text-sm text-emerald-400 bg-emerald-400/5 border border-emerald-400/20 rounded-xl px-4 py-3">
+              <CheckCircle2 size={16} />
+              Selected sections have been applied to the dashboard.
+            </div>
+          )}
         </div>
       )}
 
@@ -401,36 +653,30 @@ export default function DataIngestion() {
       {activeTab === 'news' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Fetch card */}
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 space-y-4">
+            <div className="bg-[#0c1425] border border-[#1a2744] rounded-xl p-6 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-lg">
                   <Newspaper size={20} />
                 </div>
                 <div>
                   <h3 className="text-base font-semibold text-slate-200">Batam FTZ News Feed</h3>
-                  <p className="text-xs text-slate-400">Powered by Genspark + Claude</p>
+                  <p className="text-xs text-slate-400">Genspark + Claude</p>
                 </div>
               </div>
-
               <p className="text-sm text-slate-400">
                 Searches news aggregators (Reuters, Jakarta Post, Straits Times, Business Times) for
                 the latest Batam FTZ economic, investment, and infrastructure news.
               </p>
-
               {newsStatus === 'success' && (
                 <div className="flex items-center gap-2 text-emerald-400 text-sm">
-                  <CheckCircle2 size={15} />
-                  {newsItems.length} news items fetched
+                  <CheckCircle2 size={15} /> {newsItems.length} news items fetched
                 </div>
               )}
               {newsStatus === 'error' && (
                 <div className="flex items-center gap-2 text-rose-400 text-sm">
-                  <AlertCircle size={15} />
-                  Fetch failed — see terminal
+                  <AlertCircle size={15} /> Fetch failed — see terminal
                 </div>
               )}
-
               <button
                 onClick={handleFetchNews}
                 disabled={fetchingNews}
@@ -445,9 +691,8 @@ export default function DataIngestion() {
               </button>
             </div>
 
-            {/* Terminal */}
-            <div className="bg-black/80 border border-slate-800 rounded-xl p-4 font-mono text-xs h-[220px] flex flex-col">
-              <div className="flex items-center gap-2 text-slate-500 border-b border-slate-800 pb-2 mb-2">
+            <div className="bg-black/80 border border-[#1a2744] rounded-xl p-4 font-mono text-xs h-[220px] flex flex-col">
+              <div className="flex items-center gap-2 text-slate-500 border-b border-[#1a2744] pb-2 mb-2">
                 <Terminal size={13} />
                 <span>Agent Output</span>
               </div>
@@ -456,10 +701,7 @@ export default function DataIngestion() {
                   <span className="text-slate-600 italic">Waiting for request…</span>
                 )}
                 {newsLog.map((line, i) => (
-                  <div key={i}>
-                    <span className="text-indigo-500 select-none">› </span>
-                    {line}
-                  </div>
+                  <div key={i}><span className="text-indigo-500 select-none">› </span>{line}</div>
                 ))}
                 {fetchingNews && <div className="text-indigo-400 animate-pulse">█</div>}
                 <div ref={newsLogEndRef} />
@@ -467,40 +709,27 @@ export default function DataIngestion() {
             </div>
           </div>
 
-          {/* News items */}
           {newsItems.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-slate-300">
-                {newsItems.length} News Items
-              </h3>
+              <h3 className="text-sm font-semibold text-slate-300">{newsItems.length} News Items</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {newsItems.map((item) => (
                   <div
                     key={item.id}
-                    className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition-colors"
+                    className="bg-[#0c1425] border border-[#1a2744] rounded-xl p-4 hover:border-slate-700 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <span
-                        className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[item.category] ?? 'bg-slate-700 text-slate-300'}`}
-                      >
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[item.category] ?? 'bg-slate-700 text-slate-300'}`}>
                         {item.category}
                       </span>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span
-                          className={`w-2 h-2 rounded-full ${RELEVANCE_DOT[item.relevance] ?? 'bg-slate-500'}`}
-                        />
+                        <span className={`w-2 h-2 rounded-full ${RELEVANCE_DOT[item.relevance] ?? 'bg-slate-500'}`} />
                         <span className="text-xs text-slate-500 capitalize">{item.relevance}</span>
                       </div>
                     </div>
-                    <h4 className="text-sm font-semibold text-slate-100 leading-snug mb-1">
-                      {item.title}
-                    </h4>
-                    <p className="text-xs text-slate-400 leading-relaxed mb-2">
-                      {item.summary}
-                    </p>
-                    <p className="text-xs text-slate-600">
-                      {item.source} · {item.date}
-                    </p>
+                    <h4 className="text-sm font-semibold text-slate-100 leading-snug mb-1">{item.title}</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed mb-2">{item.summary}</p>
+                    <p className="text-xs text-slate-600">{item.source} · {item.date}</p>
                   </div>
                 ))}
               </div>

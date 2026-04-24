@@ -131,11 +131,22 @@ Rules:
 - Return only the JSON object`;
 }
 
+const BPS_QUERIES = [
+  '"BPS Batam" OR "batamkota.bps.go.id" PDRB pertumbuhan ekonomi Batam 2024 2025',
+  'site:bps.go.id Batam Kepri GRDP growth rate manufacturing 2024 2025',
+  '"Badan Pusat Statistik" Batam investasi tenaga kerja inflasi ekspor impor 2025',
+  'Batam FTZ investment FDI manufacturing exports 2025 Q1 Q2',
+];
+
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
-  const query: string =
-    (body.query as string) ??
-    'Batam FTZ Q2 2026 GDP growth investment inflation infrastructure geoeconomics sector projects';
+  const queryParam = body.query as string | undefined;
+  const useBPS = body.bps === true;
+
+  const query: string = queryParam ??
+    (useBPS
+      ? BPS_QUERIES.join(' | ')
+      : 'Batam FTZ Q2 2026 GDP growth investment inflation infrastructure geoeconomics sector projects');
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -152,14 +163,28 @@ export async function POST(request: Request) {
 
       try {
         send('[LOG] Initialising Batam FTZ intelligence pipeline...');
-        send('[LOG] Running Genspark web search...');
-
-        const gensparkRaw = await tryGenspark(query);
-
-        if (gensparkRaw) {
-          send('[LOG] Genspark data collected — handing off to AI analyst...');
+        if (useBPS) {
+          send('[LOG] Running targeted BPS Batam search queries...');
         } else {
-          send('[LOG] Genspark search timed out — falling back to AI knowledge base...');
+          send('[LOG] Running Genspark web search...');
+        }
+
+        let gensparkRaw = '';
+        if (useBPS) {
+          const results = await Promise.all(BPS_QUERIES.slice(0, 2).map((q) => tryGenspark(q)));
+          gensparkRaw = results.filter(Boolean).join('\n\n---\n\n');
+          if (gensparkRaw) {
+            send('[LOG] BPS search data collected — extracting indicators...');
+          } else {
+            send('[LOG] BPS search returned no results — using AI knowledge base for Batam statistics...');
+          }
+        } else {
+          gensparkRaw = await tryGenspark(query);
+          if (gensparkRaw) {
+            send('[LOG] Genspark data collected — handing off to AI analyst...');
+          } else {
+            send('[LOG] Genspark search timed out — falling back to AI knowledge base...');
+          }
         }
 
         send('[LOG] Synthesising macro indicators, infrastructure, geopolitics & sectors...');
