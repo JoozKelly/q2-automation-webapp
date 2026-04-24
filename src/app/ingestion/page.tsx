@@ -7,13 +7,33 @@ export default function DataIngestion() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchStatus, setSearchStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-  const handleGensparkSearch = () => {
+  const [searchData, setSearchData] = useState<any>(null);
+
+  const handleGensparkSearch = async () => {
     setIsSearching(true);
-    // Simulate an API call that runs `npx @genspark/cli search "BPS Kota Batam Economic Growth Q2 2026"`
-    setTimeout(() => {
-      setIsSearching(false);
+    setSearchStatus('idle');
+    try {
+      const response = await fetch('/api/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'BPS Kota Batam Economic Growth Q2 2026' })
+      });
+      
+      if (!response.ok) {
+        setSearchStatus('error');
+        setIsSearching(false);
+        return;
+      }
+      
+      const resData = await response.json();
+      setSearchData(resData.data);
       setSearchStatus('success');
-    }, 2500);
+    } catch (err) {
+      console.error(err);
+      setSearchStatus('error');
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   return (
@@ -40,9 +60,16 @@ export default function DataIngestion() {
           </p>
           
           {searchStatus === 'success' && (
-            <div className="flex items-center space-x-2 text-emerald-400 bg-emerald-400/10 p-3 rounded-lg text-sm border border-emerald-400/20">
-              <CheckCircle2 size={16} />
-              <span>Successfully retrieved Q2 2026 data.</span>
+            <div className="flex flex-col space-y-2 mt-4 text-emerald-400 bg-emerald-400/10 p-3 rounded-lg text-sm border border-emerald-400/20 max-h-48 overflow-y-auto">
+              <div className="flex items-center space-x-2 font-semibold">
+                <CheckCircle2 size={16} />
+                <span>Successfully retrieved Q2 2026 data.</span>
+              </div>
+              {searchData && (
+                 <pre className="text-xs text-emerald-300/80 whitespace-pre-wrap font-mono mt-2">
+                   {JSON.stringify(searchData, null, 2)}
+                 </pre>
+              )}
             </div>
           )}
 

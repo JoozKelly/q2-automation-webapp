@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from 'react';
-import { FileText, LayoutTemplate, Sparkles, Send } from 'lucide-react';
+import { FileText, LayoutTemplate, Sparkles, Send, Download } from 'lucide-react';
+import { usePDF } from 'react-to-pdf';
 
 export default function ReportBuilder() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [storyline, setStoryline] = useState('');
+  const { toPDF, targetRef } = usePDF({filename: 'Batam_Economic_Outlook_Q2_2026.pdf'});
 
   const handleGenerate = () => {
     setIsGenerating(true);
@@ -63,21 +65,27 @@ export default function ReportBuilder() {
               <span>Generated Content</span>
             </h3>
             <div className="flex space-x-2">
-              <button className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors" title="Export">
-                <Send size={16} />
+              <button 
+                onClick={() => toPDF()}
+                disabled={!storyline}
+                className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${storyline ? 'bg-indigo-500 hover:bg-indigo-600 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}
+                title="Export PDF"
+              >
+                <Download size={16} />
+                <span>Export PDF</span>
               </button>
             </div>
           </div>
           
-          <div className="flex-1 p-6 overflow-y-auto">
+          <div className="flex-1 p-6 overflow-y-auto bg-white text-slate-900" ref={targetRef}>
             {storyline ? (
-              <div className="prose prose-invert prose-indigo max-w-none">
+              <div className="prose prose-slate max-w-none p-8">
                 {storyline.split('\n').map((line, i) => {
-                  if (line.startsWith('###')) return <h3 key={i} className="text-xl font-bold text-slate-100 mt-6 mb-4">{line.replace('### ', '')}</h3>;
-                  if (line.startsWith('**')) return <h4 key={i} className="text-lg font-semibold text-slate-200 mt-5 mb-2">{line.replace(/\*\*/g, '')}</h4>;
-                  if (line.startsWith('-')) return <li key={i} className="text-slate-300 ml-4 mb-2">{line.substring(2)}</li>;
+                  if (line.startsWith('###')) return <h3 key={i} className="text-2xl font-bold text-slate-900 mt-6 mb-4">{line.replace('### ', '')}</h3>;
+                  if (line.startsWith('**')) return <h4 key={i} className="text-xl font-semibold text-slate-800 mt-5 mb-2">{line.replace(/\*\*/g, '')}</h4>;
+                  if (line.startsWith('-')) return <li key={i} className="text-slate-700 ml-4 mb-2">{line.substring(2)}</li>;
                   if (line.trim() === '') return <br key={i} />;
-                  return <p key={i} className="text-slate-300 leading-relaxed">{line}</p>;
+                  return <p key={i} className="text-slate-700 leading-relaxed">{line}</p>;
                 })}
               </div>
             ) : (
