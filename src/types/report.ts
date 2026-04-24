@@ -91,3 +91,35 @@ export interface ReportData {
 
 export type RawSheetData = Record<string, unknown>[];
 export type ParsedWorkbook = Record<string, RawSheetData>;
+
+// ─── Dynamic data types (populated by ingest / upload) ────────────────────
+
+export interface SectorSummary {
+  sector: string;
+  radarLabel: string;
+  projectCount: number;
+  highlight: string;
+}
+
+export interface MacroGridRow {
+  name: string;
+  signals: TrendSignal[];
+}
+
+export interface MacroGridGroup {
+  category: string;
+  indicators: MacroGridRow[];
+}
+
+export interface DashboardStats {
+  gdpGrowthPct: number;
+  gdpGrowthChange: string;
+  fdiInflow: string;
+  fdiChange: string;
+  inflationRate: number;
+  inflationChange: string;
+  totalProjects: number;
+  period: string;
+  lastUpdated: string;
+  dataSource: 'genspark' | 'upload' | 'manual';
+}

@@ -5,55 +5,95 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { useDataStore } from '@/context/store';
-import { Database } from 'lucide-react';
+import { useReportStore } from '@/store/reportStore';
+import { Database, TrendingUp, TrendingDown } from 'lucide-react';
 import Link from 'next/link';
 import MacroIndicatorGrid from '@/components/charts/MacroIndicatorGrid';
 import GDPHistoricalChart from '@/components/charts/GDPHistoricalChart';
 
 export default function Dashboard() {
   const { data } = useDataStore();
+  const { dashboardStats, macroGrid } = useReportStore();
+
+  // Derive metric values: prefer ingest stats, fall back to timeseries last value, then null
+  const gdpValue = dashboardStats
+    ? `${dashboardStats.gdpGrowthPct.toFixed(1)}%`
+    : data?.gdpData.at(-1)?.gdp != null
+      ? `${data!.gdpData.at(-1)!.gdp}%`
+      : null;
+
+  const gdpChange = dashboardStats?.gdpGrowthChange ?? null;
+
+  const fdiValue = dashboardStats
+    ? dashboardStats.fdiInflow
+    : data?.investmentData.at(-1)?.foreign != null
+      ? `$${data!.investmentData.at(-1)!.foreign}M`
+      : null;
+
+  const fdiChange = dashboardStats?.fdiChange ?? null;
+
+  const inflationValue = dashboardStats
+    ? `${dashboardStats.inflationRate.toFixed(1)}%`
+    : data?.inflationData.at(-1)?.rate != null
+      ? `${data!.inflationData.at(-1)!.rate}%`
+      : null;
+
+  const inflationChange = dashboardStats?.inflationChange ?? null;
+
+  const totalProjects = dashboardStats?.totalProjects ?? null;
+
+  const hasData = data !== null;
+  const hasStats = dashboardStats !== null;
 
   return (
     <div className="space-y-6">
 
-      {/* 1. Macro Indicator Grid — always visible, seeded with Q2 2026 outlook */}
-      <MacroIndicatorGrid />
+      {/* 1. Macro Indicator Grid */}
+      <MacroIndicatorGrid data={macroGrid.length > 0 ? macroGrid : undefined} />
 
       {/* 2. Key Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <MetricCard
-          title="Current GDP Growth"
-          value={data ? `${data.gdpData[data.gdpData.length - 1]?.gdp ?? 7.2}%` : '7.2%'}
-          change="+0.4%"
-          isPositive={true}
+          title="GDP Growth"
+          value={gdpValue ?? '—'}
+          change={gdpChange}
+          isPositive={gdpChange ? !gdpChange.startsWith('-') : true}
+          empty={!gdpValue}
         />
         <MetricCard
-          title="Foreign Investment"
-          value={data ? `$${data.investmentData[data.investmentData.length - 1]?.foreign ?? 220}M` : '$220M'}
-          change="+22.2%"
-          isPositive={true}
-          subtitle="Luxshare & Apple Expansion"
+          title="FDI Inflow"
+          value={fdiValue ?? '—'}
+          change={fdiChange}
+          isPositive={fdiChange ? !fdiChange.startsWith('-') : true}
+          empty={!fdiValue}
         />
         <MetricCard
           title="Inflation Rate"
-          value={data ? `${data.inflationData[data.inflationData.length - 1]?.rate ?? 2.5}%` : '2.5%'}
-          change="-0.1%"
+          value={inflationValue ?? '—'}
+          change={inflationChange}
+          isPositive={inflationChange ? inflationChange.startsWith('-') : true}
+          empty={!inflationValue}
+        />
+        <MetricCard
+          title="Active Projects"
+          value={totalProjects != null ? String(totalProjects) : '—'}
+          change={null}
           isPositive={true}
-          subtitle="Stabilizing below 3%"
+          empty={totalProjects === null}
         />
       </div>
 
-      {/* 3. Historical GDP Chart — populated from uploaded XLSX */}
+      {/* 3. Historical GDP Chart */}
       <GDPHistoricalChart />
 
-      {/* 4. Quarterly Charts — require data upload */}
-      {!data ? (
+      {/* 4. Quarterly Charts — require data upload / ingest */}
+      {!hasData ? (
         <div className="bg-slate-900/50 border border-dashed border-slate-700 rounded-xl p-10 flex flex-col items-center justify-center gap-4">
           <Database size={36} className="text-slate-600" />
           <div className="text-center">
-            <p className="text-slate-300 font-semibold">Upload data to see quarterly charts</p>
+            <p className="text-slate-300 font-semibold">No data yet — run the AI search or upload a file</p>
             <p className="text-slate-500 text-sm mt-1">
-              Run the Genspark search or upload your Excel file in Data Ingestion.
+              All charts will populate after ingestion.
             </p>
           </div>
           <Link
@@ -68,7 +108,14 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* GDP Growth vs Target */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 backdrop-blur-sm">
-              <h3 className="text-lg font-semibold text-slate-200 mb-6">GDP Growth vs Target (%)</h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-slate-200">GDP Growth vs Target (%)</h3>
+                {hasStats && (
+                  <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">
+                    Last refreshed {new Date(dashboardStats!.lastUpdated).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data.gdpData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
@@ -89,22 +136,26 @@ export default function Dashboard() {
 
             {/* Investment Inflows */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 backdrop-blur-sm">
-              <h3 className="text-lg font-semibold text-slate-200 mb-6">Investment Inflows (USD Millions)</h3>
+              <h3 className="text-lg font-semibold text-slate-200 mb-6">Investment Inflows (USD M)</h3>
               <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={data.investmentData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                    <XAxis dataKey="quarter" stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
-                    <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
-                      itemStyle={{ color: '#e2e8f0' }}
-                    />
-                    <Legend />
-                    <Area type="monotone" dataKey="foreign" name="Foreign (FDI)" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
-                    <Area type="monotone" dataKey="domestic" name="Domestic (DDI)" stackId="1" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {data.investmentData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={data.investmentData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                      <XAxis dataKey="quarter" stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
+                      <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
+                        itemStyle={{ color: '#e2e8f0' }}
+                      />
+                      <Legend />
+                      <Area type="monotone" dataKey="foreign" name="Foreign (FDI)" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
+                      <Area type="monotone" dataKey="domestic" name="Domestic (DDI)" stackId="1" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <EmptyChart label="Investment data not in file — run AI search for quarterly breakdown" />
+                )}
               </div>
             </div>
           </div>
@@ -114,31 +165,37 @@ export default function Dashboard() {
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 backdrop-blur-sm">
               <h3 className="text-lg font-semibold text-slate-200 mb-6">Monthly Inflation Rate (%)</h3>
               <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.inflationData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }} barSize={32}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                    <XAxis dataKey="month" stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
-                    <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      cursor={{ fill: '#1e293b' }}
-                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
-                    />
-                    <Bar dataKey="rate" name="Inflation" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                {data.inflationData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data.inflationData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }} barSize={32}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                      <XAxis dataKey="month" stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
+                      <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        cursor={{ fill: '#1e293b' }}
+                        contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
+                      />
+                      <Bar dataKey="rate" name="Inflation" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <EmptyChart label="Inflation data not in file — run AI search for monthly CPI" />
+                )}
               </div>
             </div>
 
-            {/* AI Storyline Preview */}
+            {/* AI Storyline */}
             <div className="bg-gradient-to-br from-indigo-900/20 to-blue-900/20 border border-indigo-500/20 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
               <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none select-none">
-                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                </svg>
               </div>
-              <h3 className="text-lg font-semibold text-indigo-300 mb-4">✨ AI Generated Storyline</h3>
+              <h3 className="text-lg font-semibold text-indigo-300 mb-4">AI Synthesis</h3>
               <div className="space-y-4 text-slate-300 text-sm leading-relaxed relative z-10">
                 <p>
-                  <strong className="text-slate-100">Q2 Synthesis:</strong>{' '}
-                  {data.summary || 'Batam continues to demonstrate robust economic resilience, exceeding the GDP growth target. Inflation has stabilized, creating a favorable environment for industrial expansion.'}
+                  {data.summary ||
+                    'Batam continues to demonstrate robust economic resilience. Run an AI search to get a live synthesis of Q2 2026 conditions.'}
                 </p>
               </div>
               <div className="mt-6">
@@ -162,30 +219,39 @@ function MetricCard({
   value,
   change,
   isPositive,
-  subtitle,
+  empty,
 }: {
   title: string;
   value: string;
-  change: string;
+  change: string | null;
   isPositive: boolean;
-  subtitle?: string;
+  empty?: boolean;
 }) {
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 backdrop-blur-sm flex flex-col justify-between group hover:border-slate-700 transition-colors">
-      <div>
-        <h4 className="text-slate-400 font-medium text-sm mb-1">{title}</h4>
-        <div className="flex items-end gap-3">
-          <span className="text-3xl font-bold text-slate-100">{value}</span>
-          <span className={`text-sm font-medium mb-1 ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+    <div className={`bg-slate-900/50 border rounded-xl p-5 backdrop-blur-sm flex flex-col justify-between group transition-colors ${empty ? 'border-slate-800/50' : 'border-slate-800 hover:border-slate-700'}`}>
+      <h4 className="text-slate-400 font-medium text-xs uppercase tracking-wider mb-2">{title}</h4>
+      <div className="flex items-end gap-2">
+        <span className={`text-3xl font-bold ${empty ? 'text-slate-600' : 'text-slate-100'}`}>
+          {value}
+        </span>
+        {change && (
+          <span className={`text-sm font-medium mb-0.5 flex items-center gap-0.5 ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {isPositive ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
             {change}
           </span>
-        </div>
+        )}
       </div>
-      {subtitle && (
-        <p className="text-xs text-slate-500 mt-4 pt-4 border-t border-slate-800/50 line-clamp-1 group-hover:text-slate-400 transition-colors">
-          {subtitle}
-        </p>
+      {empty && (
+        <p className="text-xs text-slate-600 mt-3">Ingest data to populate</p>
       )}
+    </div>
+  );
+}
+
+function EmptyChart({ label }: { label: string }) {
+  return (
+    <div className="h-full flex items-center justify-center">
+      <p className="text-xs text-slate-600 italic text-center max-w-xs">{label}</p>
     </div>
   );
 }

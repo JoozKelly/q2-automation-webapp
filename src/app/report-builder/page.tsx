@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Sparkles, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePDF } from 'react-to-pdf';
 import { useDataStore } from '@/context/store';
+import { useReportStore } from '@/store/reportStore';
 import InfraSection from '@/components/sections/InfraSection';
 import GeoSection from '@/components/sections/GeoSection';
 import SectorSection from '@/components/sections/SectorSection';
@@ -19,13 +20,11 @@ const SECTION_META: { key: SectionKey; number: string; title: string; subtitle: 
 ];
 
 function NarrativePane({
-  sectionKey,
   narrative,
   isGenerating,
   onGenerate,
   onChange,
 }: {
-  sectionKey: SectionKey;
   narrative: string;
   isGenerating: boolean;
   onGenerate: () => void;
@@ -72,7 +71,6 @@ function SectionWrapper({ meta, narrative, isGenerating, onGenerate, onNarrative
 
   return (
     <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
-      {/* Section header */}
       <button
         onClick={() => setCollapsed((c) => !c)}
         className="w-full flex items-center justify-between px-6 py-4 border-b border-slate-800 hover:bg-slate-800/30 transition-colors text-left"
@@ -87,15 +85,10 @@ function SectionWrapper({ meta, narrative, isGenerating, onGenerate, onNarrative
         {collapsed ? <ChevronDown size={18} className="text-slate-500" /> : <ChevronUp size={18} className="text-slate-500" />}
       </button>
 
-      {/* Body */}
       {!collapsed && (
         <div className="p-6 grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {/* Visual content */}
           <div>{children}</div>
-
-          {/* Narrative */}
           <NarrativePane
-            sectionKey={meta.key}
             narrative={narrative}
             isGenerating={isGenerating}
             onGenerate={onGenerate}
@@ -108,7 +101,8 @@ function SectionWrapper({ meta, narrative, isGenerating, onGenerate, onNarrative
 }
 
 export default function ReportBuilder() {
-  const { data } = useDataStore();
+  const { data: chartData } = useDataStore();
+  const { data: reportData, sectorSummaries, dashboardStats } = useReportStore();
   const { toPDF, targetRef } = usePDF({ filename: 'Batam_Economic_Outlook_Q2_2026.pdf' });
 
   const [narratives, setNarratives] = useState<Record<SectionKey, string>>({
@@ -124,23 +118,41 @@ export default function ReportBuilder() {
   const setGen = (key: SectionKey, val: boolean) =>
     setGenerating((prev) => ({ ...prev, [key]: val }));
 
-  const SECTION_PROMPTS: Record<SectionKey, string> = {
-    infra:   'Write a professional 2-paragraph narrative on Batam\'s infrastructure progress (power, roads, water, connectivity, ports, tax policy) for Q2 2026. Be specific and business-oriented.',
-    geo:     'Write a professional 2-paragraph narrative on the major geopolitical events affecting Batam in Q2 2026: Rempang Island MOU, Carbon Neutral Park with Sembcorp, Singapore solar offtake, and US–Indonesia FTA discussions. Analyze their impact on FDI and tenants.',
-    sector:  'Write a professional 2-paragraph narrative on Batam\'s sector update for Q2 2026 covering Electronics (EMS), Solar/Renewable Energy, Data Centers, BESS, Medical Devices, and E-Cigarettes. Highlight growth momentum and key players.',
-    outlook: 'Write a professional 3-paragraph forward-looking outlook for Batam FTZ in H2 2026. Cover macro risks, infrastructure pipeline, sector opportunities, and strategic positioning vs regional peers (Johor, Vietnam). End with an executive recommendation for tenants.',
+  const buildPrompt = (key: SectionKey): string => {
+    const infra = reportData.infraProjects.length > 0
+      ? `Infrastructure projects: ${JSON.stringify(reportData.infraProjects)}`
+      : 'Batam infrastructure: power grid expansion, road networks, water supply, fibre connectivity, port upgrades, tax incentives.';
+
+    const geo = reportData.geoEvents.length > 0
+      ? `Geopolitical events: ${JSON.stringify(reportData.geoEvents)}`
+      : 'Key events: Rempang Island MOU (US×Indonesia), Carbon Neutral Industrial Park (Sembcorp), Singapore Solar Offtake, US–IDN Trade Framework.';
+
+    const sector = sectorSummaries.length > 0
+      ? `Sector data: ${JSON.stringify(sectorSummaries)}`
+      : 'Sectors: Electronics/EMS (9 projects), Solar (6), Data Centers (4), BESS (3), Medical (2), E-Cigarettes (4).';
+
+    const macroContext = dashboardStats
+      ? `GDP growth: ${dashboardStats.gdpGrowthPct}% (${dashboardStats.gdpGrowthChange}), FDI: ${dashboardStats.fdiInflow} (${dashboardStats.fdiChange}), Inflation: ${dashboardStats.inflationRate}% (${dashboardStats.inflationChange}).`
+      : chartData?.summary ?? 'Batam Q2 2026 economic data.';
+
+    const prompts: Record<SectionKey, string> = {
+      infra: `Write a professional 2-paragraph narrative on Batam's infrastructure progress for Q2 2026. Context: ${infra} Macro: ${macroContext} Be specific, business-oriented, and highlight tenant implications.`,
+      geo: `Write a professional 2-paragraph narrative on major geopolitical events affecting Batam in Q2 2026. Context: ${geo} Macro: ${macroContext} Analyse FDI and tenant impact.`,
+      sector: `Write a professional 2-paragraph narrative on Batam's sector update for Q2 2026. Context: ${sector} Macro: ${macroContext} Highlight growth momentum and key players.`,
+      outlook: `Write a professional 3-paragraph forward-looking outlook for Batam FTZ in H2 2026. Macro context: ${macroContext} Cover macro risks, infrastructure pipeline, sector opportunities, and strategic positioning vs Johor and Vietnam. End with an executive recommendation for tenants.`,
+    };
+    return prompts[key];
   };
 
   const handleGenerate = async (key: SectionKey) => {
     setGen(key, true);
     try {
-      const baseData = data ?? { summary: 'Batam Q2 2026 economic data' };
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          data: baseData,
-          sections: [SECTION_PROMPTS[key]],
+          data: chartData ?? { summary: 'Batam Q2 2026 economic data' },
+          sections: [buildPrompt(key)],
         }),
       });
       const json = await res.json();
@@ -152,11 +164,15 @@ export default function ReportBuilder() {
     }
   };
 
+  const hasInfra   = reportData.infraProjects.length > 0;
+  const hasGeo     = reportData.geoEvents.length > 0;
+  const hasSectors = sectorSummaries.length > 0;
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Hidden PDF target — white/print-ready layout captured by react-to-pdf */}
+      {/* Hidden styled PDF target */}
       <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }} ref={targetRef}>
-        <ReportPDFContent narratives={narratives} period="Q2 2026" />
+        <ReportPDFContent narratives={narratives} period="Q2 2026" stats={dashboardStats} />
       </div>
 
       {/* Header */}
@@ -164,7 +180,12 @@ export default function ReportBuilder() {
         <div>
           <h2 className="text-2xl font-bold text-slate-100">Report Builder</h2>
           <p className="text-slate-400 mt-1 text-sm">
-            Build the Q2 2026 Batam Economic Outlook — generate AI narratives and export to PDF.
+            Generate AI narratives for each section, then export a styled PDF.
+            {dashboardStats && (
+              <span className="ml-2 text-emerald-400 font-medium">
+                · Live data loaded ({dashboardStats.dataSource === 'genspark' ? 'AI search' : 'uploaded file'})
+              </span>
+            )}
           </p>
         </div>
         <button
@@ -176,7 +197,7 @@ export default function ReportBuilder() {
         </button>
       </div>
 
-      {/* Visible report sections */}
+      {/* Sections */}
       <div className="space-y-4">
         {SECTION_META.map((meta) => (
           <SectionWrapper
@@ -187,16 +208,39 @@ export default function ReportBuilder() {
             onGenerate={() => handleGenerate(meta.key)}
             onNarrativeChange={(v) => setNarrative(meta.key, v)}
           >
-            {meta.key === 'infra'   && <InfraSection />}
-            {meta.key === 'geo'     && <GeoSection />}
-            {meta.key === 'sector'  && <SectorSection />}
+            {meta.key === 'infra' && (
+              <InfraSection projects={hasInfra ? reportData.infraProjects : undefined} />
+            )}
+            {meta.key === 'geo' && (
+              <GeoSection events={hasGeo ? reportData.geoEvents : undefined} />
+            )}
+            {meta.key === 'sector' && (
+              <SectorSection summaries={hasSectors ? sectorSummaries : undefined} />
+            )}
             {meta.key === 'outlook' && (
-              <div className="rounded-xl bg-slate-800/30 border border-slate-700 p-5">
-                <p className="text-xs text-slate-500 italic leading-relaxed">
-                  Key themes to address: infrastructure pipeline readiness, FDI diversification from EMS to renewables,
-                  geopolitical positioning (US–IDN relations, Singapore corridor), competitive landscape vs Johor &amp; Vietnam,
-                  and tenant risk signals for H2 2026.
-                </p>
+              <div className="rounded-xl bg-slate-800/30 border border-slate-700 p-5 space-y-3">
+                {dashboardStats ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: 'GDP Growth', value: `${dashboardStats.gdpGrowthPct.toFixed(1)}% (${dashboardStats.gdpGrowthChange})` },
+                      { label: 'FDI Inflow', value: `${dashboardStats.fdiInflow} (${dashboardStats.fdiChange})` },
+                      { label: 'Inflation', value: `${dashboardStats.inflationRate.toFixed(1)}% (${dashboardStats.inflationChange})` },
+                      { label: 'Active Projects', value: String(dashboardStats.totalProjects) },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="bg-slate-800/50 rounded-lg p-3">
+                        <p className="text-xs text-slate-500 mb-0.5">{label}</p>
+                        <p className="text-sm font-semibold text-slate-200">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 italic leading-relaxed">
+                    Run the AI search in Data Ingestion to populate macro context for this section.
+                    Key themes to cover: infrastructure pipeline readiness, FDI diversification,
+                    geopolitical positioning (US–IDN, Singapore corridor), competitive landscape vs
+                    Johor &amp; Vietnam, and tenant risk signals for H2 2026.
+                  </p>
+                )}
               </div>
             )}
           </SectionWrapper>
@@ -205,4 +249,3 @@ export default function ReportBuilder() {
     </div>
   );
 }
-

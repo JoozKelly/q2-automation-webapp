@@ -1,17 +1,17 @@
 'use client';
 
 import React from 'react';
+import type { DashboardStats } from '@/types/report';
 
 interface Props {
   narratives: Record<string, string>;
   period?: string;
+  stats?: DashboardStats | null;
 }
 
 const NAVY  = '#0a1628';
 const BLUE  = '#1d4ed8';
 const LIGHT = '#f0f4ff';
-
-// ─── Primitives ────────────────────────────────────────────────────────────
 
 function StatBox({ label, value, color }: { label: string; value: string; color: string }) {
   return (
@@ -71,12 +71,17 @@ function PlaceholderText({ label }: { label: string }) {
   );
 }
 
-// ─── Main PDF Component ─────────────────────────────────────────────────────
-
-export default function ReportPDFContent({ narratives, period = 'Q2 2026' }: Props) {
+export default function ReportPDFContent({ narratives, period = 'Q2 2026', stats }: Props) {
   const generated = new Date().toLocaleDateString('en-GB', {
     day: 'numeric', month: 'long', year: 'numeric',
   });
+
+  // Use live stats if available, otherwise fall back to display placeholders
+  const gdpDisplay     = stats ? `${stats.gdpGrowthPct.toFixed(1)}%` : '—';
+  const fdiDisplay     = stats ? stats.fdiInflow : '—';
+  const inflDisplay    = stats ? `${stats.inflationRate.toFixed(1)}%` : '—';
+  const projDisplay    = stats ? String(stats.totalProjects) : '—';
+  const sourceLabel    = stats ? `Data: ${stats.dataSource === 'genspark' ? 'AI Web Search' : stats.dataSource === 'upload' ? 'Uploaded File' : 'Manual'}` : 'Data: not yet ingested';
 
   return (
     <div
@@ -87,7 +92,7 @@ export default function ReportPDFContent({ narratives, period = 'Q2 2026' }: Pro
         color: '#0f172a',
       }}
     >
-      {/* ── Cover / Header ── */}
+      {/* Cover / Header */}
       <div style={{ background: NAVY, color: 'white', padding: '40px 48px 32px' }}>
         <p style={{ fontSize: 10, letterSpacing: 3, color: '#64748b', margin: '0 0 12px', textTransform: 'uppercase' as const }}>
           BP Batam — Tenant Intelligence Brief
@@ -102,25 +107,26 @@ export default function ReportPDFContent({ narratives, period = 'Q2 2026' }: Pro
           </h2>
         </div>
 
-        {/* Key stats row */}
+        {/* Key stats row — driven by live data */}
         <div style={{ display: 'flex', gap: 48 }}>
-          <StatBox label="GDP Growth" value="7.2%" color="#34d399" />
-          <StatBox label="FDI Inflow" value="$220M" color="#60a5fa" />
-          <StatBox label="Inflation"  value="2.5%" color="#a78bfa" />
-          <StatBox label="Sector Projects" value="28" color="#fb923c" />
+          <StatBox label="GDP Growth"       value={gdpDisplay}  color="#34d399" />
+          <StatBox label="FDI Inflow"       value={fdiDisplay}  color="#60a5fa" />
+          <StatBox label="Inflation"        value={inflDisplay} color="#a78bfa" />
+          <StatBox label="Active Projects"  value={projDisplay} color="#fb923c" />
         </div>
       </div>
 
-      {/* ── Executive Note ── */}
-      <div style={{ background: LIGHT, padding: '16px 48px', borderBottom: `1px solid #dbeafe` }}>
+      {/* Executive Note */}
+      <div style={{ background: LIGHT, padding: '14px 48px', borderBottom: `1px solid #dbeafe` }}>
         <p style={{ fontSize: 11, color: '#1e3a5f', margin: 0, lineHeight: 1.6 }}>
-          <strong>Report Scope:</strong> This brief covers Q2 2026 macroeconomic indicators, infrastructure
-          progress, key geopolitical events, sector pipeline updates, and the forward-looking outlook for
-          Batam Free Trade Zone tenants.
+          <strong>Report Scope:</strong> This brief covers {period} macroeconomic indicators,
+          infrastructure progress, key geopolitical events, sector pipeline updates, and the
+          forward-looking outlook for Batam Free Trade Zone tenants.{' '}
+          <span style={{ color: '#94a3b8' }}>{sourceLabel}</span>
         </p>
       </div>
 
-      {/* ── Sections ── */}
+      {/* Sections */}
       <SectionBlock num="02" title="Infrastructure & Government Plans">
         {narratives.infra
           ? <NarrativeText text={narratives.infra} />
@@ -145,7 +151,7 @@ export default function ReportPDFContent({ narratives, period = 'Q2 2026' }: Pro
           : <PlaceholderText label="Forward-looking outlook narrative" />}
       </SectionBlock>
 
-      {/* ── Footer ── */}
+      {/* Footer */}
       <div
         style={{
           background: '#f8fafc',
