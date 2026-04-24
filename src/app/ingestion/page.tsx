@@ -786,6 +786,18 @@ export default function DataIngestion() {
 
               {/* Featured article */}
               <div className={`bg-[#0b1829] border border-[#1e3a5f]/50 rounded-xl overflow-hidden border-l-4 ${CATEGORY_BORDER[newsItems[0].category] ?? 'border-slate-500'}`}>
+                {newsItems[0].imageUrl && (
+                  <div className="h-40 overflow-hidden relative">
+                    <img
+                      src={newsItems[0].imageUrl}
+                      alt=""
+                      className="w-full h-full object-cover opacity-70"
+                      loading="lazy"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0b1829] to-transparent" />
+                  </div>
+                )}
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-3">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[newsItems[0].category] ?? 'bg-slate-700 text-slate-300'}`}>
@@ -815,6 +827,18 @@ export default function DataIngestion() {
                       key={item.id}
                       className={`bg-[#0b1829] border border-[#1e3a5f]/50 rounded-xl overflow-hidden border-l-[3px] ${CATEGORY_BORDER[item.category] ?? 'border-slate-500'} hover:bg-[#0f2040]/60 transition-colors`}
                     >
+                      {item.imageUrl && (
+                        <div className="h-24 overflow-hidden relative">
+                          <img
+                            src={item.imageUrl}
+                            alt=""
+                            className="w-full h-full object-cover opacity-60"
+                            loading="lazy"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#0b1829] to-transparent" />
+                        </div>
+                      )}
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[item.category] ?? 'bg-slate-700 text-slate-300'}`}>

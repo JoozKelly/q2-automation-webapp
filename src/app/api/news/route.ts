@@ -84,7 +84,7 @@ CRITICAL FORMATTING RULES — output fed directly to JSON.parse():
 • NO trailing commas. NO JavaScript comments.
 • ALL string values MUST use double quotes.
 
-Return exactly this structure:
+Return exactly this structure (imageSearchTerm should be 2–3 keywords for finding a relevant photo):
 
 [
   {
@@ -94,7 +94,8 @@ Return exactly this structure:
     "source": "Reuters",
     "date": "March 2026",
     "category": "policy",
-    "relevance": "high"
+    "relevance": "high",
+    "imageSearchTerm": "trade agreement handshake"
   },
   {
     "id": "2",
@@ -103,7 +104,8 @@ Return exactly this structure:
     "source": "Business Times",
     "date": "February 2026",
     "category": "fdi",
-    "relevance": "high"
+    "relevance": "high",
+    "imageSearchTerm": "solar energy industrial park"
   },
   {
     "id": "3",
@@ -112,7 +114,8 @@ Return exactly this structure:
     "source": "Straits Times",
     "date": "January 2026",
     "category": "geopolitics",
-    "relevance": "high"
+    "relevance": "high",
+    "imageSearchTerm": "manufacturing electronics factory"
   },
   {
     "id": "4",
@@ -121,7 +124,8 @@ Return exactly this structure:
     "source": "BP Batam Press Release",
     "date": "April 2026",
     "category": "fdi",
-    "relevance": "high"
+    "relevance": "high",
+    "imageSearchTerm": "data center technology investment"
   },
   {
     "id": "5",
@@ -130,7 +134,8 @@ Return exactly this structure:
     "source": "Jakarta Post",
     "date": "April 2026",
     "category": "policy",
-    "relevance": "medium"
+    "relevance": "medium",
+    "imageSearchTerm": "solar panel manufacturing"
   },
   {
     "id": "6",
@@ -139,7 +144,8 @@ Return exactly this structure:
     "source": "Data Centre Dynamics",
     "date": "March 2026",
     "category": "sector",
-    "relevance": "high"
+    "relevance": "high",
+    "imageSearchTerm": "data center server room"
   },
   {
     "id": "7",
@@ -148,7 +154,8 @@ Return exactly this structure:
     "source": "Bisnis Indonesia",
     "date": "March 2026",
     "category": "infrastructure",
-    "relevance": "high"
+    "relevance": "high",
+    "imageSearchTerm": "power plant construction"
   },
   {
     "id": "8",
@@ -157,13 +164,15 @@ Return exactly this structure:
     "source": "Nikkei Asia",
     "date": "February 2026",
     "category": "sector",
-    "relevance": "high"
+    "relevance": "high",
+    "imageSearchTerm": "battery energy storage technology"
   }
 ]
 
 Use the web data above where available; fill gaps from your knowledge.
 Category must be one of: fdi, infrastructure, policy, sector, geopolitics, economy
-Relevance must be one of: high, medium, low`;
+Relevance must be one of: high, medium, low
+imageSearchTerm: 2-3 keywords describing a relevant photo for the article (e.g. "solar panels factory", "data center servers")`;
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────
@@ -226,6 +235,14 @@ export async function POST(request: Request) {
           const raw = message.content[0].type === 'text' ? message.content[0].text : '[]';
           try {
             parsed = repairAndParseArray(raw);
+            // Attach Unsplash image URLs from imageSearchTerm
+            parsed = (parsed as Record<string, unknown>[]).map((item) => {
+              const term = (item.imageSearchTerm as string) ?? (item.category as string) ?? 'indonesia economy';
+              return {
+                ...item,
+                imageUrl: `https://source.unsplash.com/featured/800x400/?${encodeURIComponent(term + ',indonesia')}`,
+              };
+            });
             jsonStr = JSON.stringify(parsed);
             break;
           } catch (e) {

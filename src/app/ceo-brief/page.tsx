@@ -60,6 +60,7 @@ const CHAPTER_PILLS = [
 
 export default function CEOBriefPage() {
   const [reportFile, setReportFile] = useState<File | null>(null);
+  const [prevReportText, setPrevReportText] = useState('');
   const [focus, setFocus] = useState('');
   const [generating, setGenerating] = useState(false);
   const [briefText, setBriefText] = useState('');
@@ -103,6 +104,7 @@ export default function CEOBriefPage() {
     const form = new FormData();
     form.append('context', contextParts.join('\n'));
     form.append('focus', focus);
+    form.append('prevReportText', prevReportText);
     if (reportFile) form.append('file', reportFile);
 
     try {
@@ -201,11 +203,10 @@ export default function CEOBriefPage() {
         <div className="bg-[#0b1829] border border-[#1e3a5f]/50 rounded-2xl p-5 space-y-4">
           <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
             <BookOpen size={16} className="text-indigo-400" />
-            Upload Existing Report (optional)
+            Previous Quarter Report (Q1 2026)
           </h3>
           <p className="text-xs text-slate-500">
-            Upload a PDF of a previous quarterly report so Claude can match the tone, structure,
-            and key themes.
+            Upload a PDF or paste the key highlights below — Claude will use it to suggest a storyline for the most recent quarter.
           </p>
           <input
             ref={fileInputRef}
@@ -230,6 +231,18 @@ export default function CEOBriefPage() {
                 <p className="text-sm text-slate-400">Click to upload PDF</p>
               </>
             )}
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-slate-400 block">
+              Or paste key highlights from previous report
+            </label>
+            <textarea
+              value={prevReportText}
+              onChange={(e) => setPrevReportText(e.target.value)}
+              placeholder="e.g. Q1 GDP growth was 6.8%, FDI reached $185M. Key projects: Tanjung Uncang Phase 1 completed. Solar sector added 3 new investments..."
+              rows={4}
+              className="w-full bg-[#060e1e] border border-[#1e3a5f]/50 rounded-lg px-3 py-2 text-xs text-slate-300 placeholder-slate-600 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+            />
           </div>
         </div>
 

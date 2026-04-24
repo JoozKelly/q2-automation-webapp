@@ -267,15 +267,18 @@ export async function POST(request: Request) {
           }
         }
 
+        const webDataFound = !!gensparkRaw;
+
         if (!gensparkRaw) {
           send('[LOG] Web search exhausted — synthesising from AI knowledge base...');
+          send('[WARN] No live web data found — indicators will be AI-estimated. Upload BPS reports for verified data.');
         }
 
         // ── Step 2: Claude synthesis with retry on bad JSON ────────────────
         send('[LOG] Synthesising indicators, infrastructure, geopolitics & sectors...');
 
         const client = new Anthropic({ apiKey });
-        let parsed: unknown = null;
+        let parsed: Record<string, unknown> = {};
         let jsonStr = '';
 
         for (let attempt = 1; attempt <= 2; attempt++) {
@@ -289,8 +292,19 @@ export async function POST(request: Request) {
 
           const raw = message.content[0].type === 'text' ? message.content[0].text : '';
           try {
-            parsed = repairAndParse(raw);
-            jsonStr = JSON.stringify(parsed); // normalised JSON
+            parsed = repairAndParse(raw) as Record<string, unknown>;
+            // Inject confidence metadata
+            if (parsed.dashboardStats && typeof parsed.dashboardStats === 'object') {
+              const stats = parsed.dashboardStats as Record<string, unknown>;
+              stats.dataConfidence = webDataFound ? 'verified' : 'ai_estimated';
+              if (!webDataFound) {
+                stats.dataWarnings = [
+                  'No live web data was retrieved. All indicators are AI-estimated from training knowledge.',
+                  'For verified figures, upload a recent BPS report or paste statistical data in Data Ingestion.',
+                ];
+              }
+            }
+            jsonStr = JSON.stringify(parsed);
             break;
           } catch (e) {
             if (attempt === 2) throw new Error(`JSON parse failed after 2 attempts: ${e instanceof Error ? e.message : e}`);

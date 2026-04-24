@@ -13,6 +13,7 @@ export async function POST(request: Request) {
   const formData = await request.formData().catch(() => null);
   const context = (formData?.get('context') as string) ?? '';
   const focus = (formData?.get('focus') as string) ?? '';
+  const prevReportText = (formData?.get('prevReportText') as string) ?? '';
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const contentBlocks: any[] = [];
@@ -31,8 +32,9 @@ export async function POST(request: Request) {
     }
   }
 
-  const prompt = `You are a senior strategy consultant helping prepare the storyline and narrative arc for Batam FTZ's Q3 2026 economic report. Based on the Q2 2026 data provided, recommend what stories to tell, what angles to lead with, and what talking points will resonate with CEO and investor audiences next quarter.
+  const prompt = `You are a senior strategy consultant preparing the storyline for Batam FTZ's MOST RECENT quarterly report. Using the previous quarter's report as a baseline, and the current Q2 2026 data as the latest evidence, recommend what NEW stories to tell for the upcoming quarter — what improved, what risks emerged, and how to frame Batam's competitive position for CEO and investor audiences.
 ${context ? `\nQ2 2026 economic data context:\n${context}\n` : ''}
+${prevReportText ? `\nPrevious quarter report highlights (Q1 2026):\n${prevReportText.slice(0, 3000)}\n` : ''}
 ${focus ? `\nStrategic priorities to emphasise: ${focus}\n` : ''}
 ${file ? `\nThe user has uploaded an existing Q2 report (attached). Use it as your primary reference for facts, figures, and trends going into Q3.` : ''}
 

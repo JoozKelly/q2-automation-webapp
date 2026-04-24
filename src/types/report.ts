@@ -122,6 +122,8 @@ export interface DashboardStats {
   period: string;
   lastUpdated: string;
   dataSource: 'genspark' | 'upload' | 'manual';
+  dataConfidence?: 'verified' | 'ai_estimated';
+  dataWarnings?: string[];
 }
 
 export type NewsCategory =
@@ -142,4 +144,5 @@ export interface NewsItem {
   date: string;
   category: NewsCategory;
   relevance: NewsRelevance;
+  imageUrl?: string;
 }

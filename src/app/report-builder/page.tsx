@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import { Sparkles, Download, ChevronDown, ChevronUp, BookOpen, Lightbulb } from 'lucide-react';
+import { Sparkles, Download, ChevronDown, ChevronUp, BookOpen, Lightbulb, CheckCircle2 } from 'lucide-react';
 import { usePDF } from 'react-to-pdf';
 import { useDataStore } from '@/context/store';
 import { useReportStore } from '@/store/reportStore';
@@ -226,18 +226,24 @@ function SectionWrapper({ meta, narrative, isGenerating, onGenerate, onNarrative
 
 export default function ReportBuilder() {
   const { data: chartData }  = useDataStore();
-  const { data: reportData, sectorSummaries, dashboardStats, ceoBrief, macroGrid, newsItems } = useReportStore();
+  const { data: reportData, sectorSummaries, dashboardStats, ceoBrief, macroGrid, newsItems, updateNarrative: saveNarrative } = useReportStore();
   const { toPDF, targetRef } = usePDF({ filename: 'Batam_Economic_Outlook_Q2_2026.pdf' });
 
   const [narratives, setNarratives] = useState<Record<SectionKey, string>>({
-    infra: '', geo: '', sector: '', outlook: '',
+    infra:   reportData.narratives.infra   ?? '',
+    geo:     reportData.narratives.geo     ?? '',
+    sector:  reportData.narratives.sector  ?? '',
+    outlook: reportData.narratives.outlook ?? '',
   });
   const [generating, setGenerating] = useState<Record<SectionKey, boolean>>({
     infra: false, geo: false, sector: false, outlook: false,
   });
+  const [generatingAll, setGeneratingAll] = useState(false);
 
-  const setNarrative = (key: SectionKey, text: string) =>
+  const setNarrative = (key: SectionKey, text: string) => {
     setNarratives((prev) => ({ ...prev, [key]: text }));
+    saveNarrative(key as Parameters<typeof saveNarrative>[0], text);
+  };
 
   const setGen = (key: SectionKey, val: boolean) =>
     setGenerating((prev) => ({ ...prev, [key]: val }));
@@ -302,6 +308,14 @@ export default function ReportBuilder() {
     }
   };
 
+  const handleGenerateAll = async () => {
+    setGeneratingAll(true);
+    for (const key of ['infra', 'geo', 'sector', 'outlook'] as SectionKey[]) {
+      await handleGenerate(key);
+    }
+    setGeneratingAll(false);
+  };
+
   const hasInfra   = reportData.infraProjects.length > 0;
   const hasGeo     = reportData.geoEvents.length > 0;
   const hasSectors = sectorSummaries.length > 0;
@@ -338,14 +352,43 @@ export default function ReportBuilder() {
             )}
           </p>
         </div>
-        <button
-          onClick={() => toPDF()}
-          className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-[0_0_20px_rgba(99,102,241,0.4)]"
-        >
-          <Download size={16} />
-          Export PDF
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleGenerateAll}
+            disabled={generatingAll || Object.values(generating).some(Boolean)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              generatingAll
+                ? 'bg-emerald-500/30 text-emerald-300 cursor-not-allowed'
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+            }`}
+          >
+            <Sparkles size={15} className={generatingAll ? 'animate-pulse' : ''} />
+            {generatingAll ? 'Generating All...' : 'Generate All'}
+          </button>
+          <button
+            onClick={() => toPDF()}
+            className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-[0_0_20px_rgba(99,102,241,0.4)]"
+          >
+            <Download size={16} />
+            Export PDF
+          </button>
+        </div>
       </div>
+
+      {/* Storyline ready banner */}
+      {ceoBrief && !Object.values(narratives).some(Boolean) && (
+        <div className="flex items-center justify-between gap-4 px-5 py-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+            <p className="text-xs text-emerald-300">
+              Storyline ready — click <strong>Generate All</strong> to auto-write all section narratives based on your Q3 Storyline Plan and ingested data.
+            </p>
+          </div>
+          <button onClick={handleGenerateAll} className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 shrink-0 whitespace-nowrap">
+            Generate All →
+          </button>
+        </div>
+      )}
 
       {/* CEO Brief Storyline Guide */}
       {chapters.length > 0 ? (

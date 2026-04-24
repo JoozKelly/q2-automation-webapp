@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, AlertTriangle, Wifi } from 'lucide-react';
 import type { TrendSignal } from '@/types/report';
 
 const PERIODS = [
@@ -102,9 +102,14 @@ function SignalCell({ signal, isCurrent }: { signal: TrendSignal; isCurrent: boo
 
 export default function MacroIndicatorGrid({
   data = DEFAULT_DATA,
+  isEstimated,
 }: {
   data?: IndicatorGroup[];
+  isEstimated?: boolean;
 }) {
+  const usingDefaults = data === DEFAULT_DATA;
+  const showWarning = usingDefaults || isEstimated;
+
   return (
     <div className="bg-[#0b1829] border border-[#1e3a5f]/50 rounded-xl overflow-hidden backdrop-blur-sm">
       {/* Header */}
@@ -117,21 +122,48 @@ export default function MacroIndicatorGrid({
             Indicator trend vs. prior quarter · 2024 Q1 — 2026 Q2
           </p>
         </div>
-        <div className="flex items-center gap-5 text-xs text-slate-400">
-          <span className="flex items-center gap-1.5">
-            <TrendingUp size={12} className="text-emerald-400" />
-            Improving
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Minus size={12} className="text-slate-500" />
-            Stable
-          </span>
-          <span className="flex items-center gap-1.5">
-            <TrendingDown size={12} className="text-red-400" />
-            Declining
-          </span>
+        <div className="flex items-center gap-4 flex-wrap">
+          {!showWarning && (
+            <span className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
+              <Wifi size={11} />
+              Live data
+            </span>
+          )}
+          {showWarning && (
+            <span className="flex items-center gap-1.5 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">
+              <AlertTriangle size={11} />
+              AI estimated
+            </span>
+          )}
+          <div className="flex items-center gap-5 text-xs text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <TrendingUp size={12} className="text-emerald-400" />
+              Improving
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Minus size={12} className="text-slate-500" />
+              Stable
+            </span>
+            <span className="flex items-center gap-1.5">
+              <TrendingDown size={12} className="text-red-400" />
+              Declining
+            </span>
+          </div>
         </div>
       </div>
+
+      {/* Confidence warning */}
+      {showWarning && (
+        <div className="px-6 py-3 bg-amber-500/5 border-b border-amber-500/15 flex items-start gap-2.5">
+          <AlertTriangle size={13} className="text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-300/80 leading-relaxed">
+            {usingDefaults
+              ? 'Showing AI-estimated baseline signals — no economic data has been ingested. Run a BPS Search or upload a report in Data Ingestion for verified trend data.'
+              : 'These signals were synthesised by AI from web search results. Verify critical indicators against official BPS or BP Batam publications.'}
+          </p>
+        </div>
+      )}
+
 
       {/* Table */}
       <div className="overflow-x-auto">

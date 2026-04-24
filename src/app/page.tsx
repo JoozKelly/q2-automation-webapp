@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import { useDataStore, EconomicData } from '@/context/store';
 import { useReportStore } from '@/store/reportStore';
-import { Database, TrendingUp, TrendingDown, Newspaper, ChevronRight, Sparkles, RefreshCw } from 'lucide-react';
+import { Database, TrendingUp, TrendingDown, Newspaper, ChevronRight, Sparkles, RefreshCw, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import MacroIndicatorGrid from '@/components/charts/MacroIndicatorGrid';
 import GDPHistoricalChart from '@/components/charts/GDPHistoricalChart';
@@ -164,8 +164,28 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Confidence warning banner */}
+      {dashboardStats?.dataConfidence === 'ai_estimated' && (
+        <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-500/8 border border-amber-500/20">
+          <AlertTriangle size={15} className="text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-amber-300">AI-Estimated Data — Not Verified</p>
+            <p className="text-xs text-amber-300/70 mt-0.5 leading-relaxed">
+              No live web data was retrieved during this search. All indicators are synthesised from AI training knowledge and may not reflect current conditions.
+              {' '}<span className="text-amber-400 font-medium">Upload a recent BPS report or paste official statistics in Data Ingestion for verified data.</span>
+            </p>
+          </div>
+          <Link href="/ingestion" className="text-xs font-medium text-amber-400 hover:text-amber-300 whitespace-nowrap shrink-0 mt-0.5">
+            Verify data →
+          </Link>
+        </div>
+      )}
+
       {/* 2. Macro Indicator Grid */}
-      <MacroIndicatorGrid data={macroGrid.length > 0 ? macroGrid : undefined} />
+      <MacroIndicatorGrid
+        data={macroGrid.length > 0 ? macroGrid : undefined}
+        isEstimated={dashboardStats?.dataConfidence === 'ai_estimated'}
+      />
 
       {/* 3. Historical GDP Chart */}
       <GDPHistoricalChart />
@@ -337,6 +357,19 @@ export default function Dashboard() {
           <div className="p-5 space-y-4">
             {/* Featured article */}
             <div className={`bg-[#0b1829] border border-[#1e3a5f]/50 rounded-xl overflow-hidden border-l-4 ${CATEGORY_BORDER[newsItems[0].category] ?? 'border-slate-500'}`}>
+              {newsItems[0].imageUrl && (
+                <div className="h-40 overflow-hidden relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={newsItems[0].imageUrl}
+                    alt=""
+                    className="w-full h-full object-cover opacity-70"
+                    loading="lazy"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0b1829] to-transparent" />
+                </div>
+              )}
               <div className="p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[newsItems[0].category] ?? 'bg-slate-700 text-slate-300'}`}>
@@ -358,6 +391,19 @@ export default function Dashboard() {
                     key={item.id}
                     className={`bg-[#060e1e] border border-[#1e3a5f]/50 rounded-xl overflow-hidden border-l-[3px] ${CATEGORY_BORDER[item.category] ?? 'border-slate-500'} hover:bg-[#0f2040]/60 transition-colors`}
                   >
+                    {item.imageUrl && (
+                      <div className="h-24 overflow-hidden relative">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.imageUrl}
+                          alt=""
+                          className="w-full h-full object-cover opacity-60"
+                          loading="lazy"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#060e1e] to-transparent" />
+                      </div>
+                    )}
                     <div className="p-4">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[item.category] ?? 'bg-slate-700 text-slate-300'}`}>
