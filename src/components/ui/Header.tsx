@@ -11,6 +11,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   '/ingestion':      { title: 'Data Ingestion',      subtitle: 'Upload documents · BPS search · News intelligence' },
   '/ceo-brief':      { title: 'Storyline Planner',   subtitle: 'Plan your Q3 narrative arc and chapter structure' },
   '/report-builder': { title: 'Report Builder',      subtitle: 'Generate section narratives and export PDF' },
+  '/export':         { title: 'Export Data',         subtitle: 'Download all visualizations and tables as Excel' },
 };
 
 export default function Header() {

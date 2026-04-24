@@ -226,7 +226,7 @@ function SectionWrapper({ meta, narrative, isGenerating, onGenerate, onNarrative
 
 export default function ReportBuilder() {
   const { data: chartData }  = useDataStore();
-  const { data: reportData, sectorSummaries, dashboardStats, ceoBrief } = useReportStore();
+  const { data: reportData, sectorSummaries, dashboardStats, ceoBrief, macroGrid, newsItems } = useReportStore();
   const { toPDF, targetRef } = usePDF({ filename: 'Batam_Economic_Outlook_Q2_2026.pdf' });
 
   const [narratives, setNarratives] = useState<Record<SectionKey, string>>({
@@ -309,8 +309,20 @@ export default function ReportBuilder() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Hidden PDF target */}
-      <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }} ref={targetRef}>
-        <ReportPDFContent narratives={narratives} period="Q2 2026" stats={dashboardStats} />
+      <div style={{ position: 'fixed', left: '-9999px', top: 0, pointerEvents: 'none', width: 794 }} ref={targetRef}>
+        <ReportPDFContent
+          narratives={narratives}
+          period="Q2 2026"
+          stats={dashboardStats}
+          gdpData={chartData?.gdpData}
+          investmentData={chartData?.investmentData}
+          inflationData={chartData?.inflationData}
+          infraProjects={reportData.infraProjects}
+          geoEvents={reportData.geoEvents}
+          sectorSummaries={sectorSummaries}
+          macroGrid={macroGrid}
+          newsItems={newsItems}
+        />
       </div>
 
       {/* Header */}

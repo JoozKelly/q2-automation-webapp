@@ -1,19 +1,69 @@
 "use client";
 
+import { useState, useCallback } from 'react';
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { useDataStore } from '@/context/store';
+import { useDataStore, EconomicData } from '@/context/store';
 import { useReportStore } from '@/store/reportStore';
-import { Database, TrendingUp, TrendingDown, Newspaper, ChevronRight, Sparkles } from 'lucide-react';
+import { Database, TrendingUp, TrendingDown, Newspaper, ChevronRight, Sparkles, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import MacroIndicatorGrid from '@/components/charts/MacroIndicatorGrid';
 import GDPHistoricalChart from '@/components/charts/GDPHistoricalChart';
 
 export default function Dashboard() {
-  const { data } = useDataStore();
-  const { dashboardStats, macroGrid, newsItems } = useReportStore();
+  const { data, setData } = useDataStore();
+  const { dashboardStats, macroGrid, newsItems, setFullPayload } = useReportStore();
+  const [autoFilling, setAutoFilling] = useState(false);
+  const [autoFillLog, setAutoFillLog] = useState<string>('');
+
+  const handleAutoFill = useCallback(async () => {
+    setAutoFilling(true);
+    setAutoFillLog('Searching Genspark for Q2 2026 data...');
+    try {
+      const res = await fetch('/api/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!res.body) throw new Error('No stream');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        full += chunk;
+        const lastLog = chunk.split('\n').filter((l) => l.startsWith('[LOG]')).at(-1);
+        if (lastLog) setAutoFillLog(lastLog.replace('[LOG]', '').trim());
+      }
+
+      const payloadLine = full.split('\n').find((l) => l.startsWith('[PAYLOAD]'));
+      if (!payloadLine) throw new Error('No payload returned');
+
+      const payload = JSON.parse(payloadLine.slice('[PAYLOAD] '.length));
+      setFullPayload(payload);
+      if (payload.gdpData || payload.investmentData || payload.inflationData) {
+        const economicData: EconomicData = {
+          gdpData:        payload.gdpData        ?? [],
+          investmentData: payload.investmentData ?? [],
+          inflationData:  payload.inflationData  ?? [],
+          summary:        payload.summary        ?? '',
+        };
+        setData(economicData);
+      }
+      setAutoFillLog('');
+    } catch (err) {
+      setAutoFillLog(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      setTimeout(() => setAutoFillLog(''), 4000);
+    } finally {
+      setAutoFilling(false);
+    }
+  }, [setData, setFullPayload]);
 
   // Derive metric values: prefer ingest stats, fall back to timeseries last value, then null
   const gdpValue = dashboardStats
@@ -52,15 +102,31 @@ export default function Dashboard() {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#4a5e78]">Key Performance Indicators</p>
-          {dashboardStats && (
-            <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${
-              dashboardStats.dataSource === 'genspark'
-                ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-            }`}>
-              {dashboardStats.dataSource === 'genspark' ? '⚡ AI Search' : '📄 Uploaded'}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {!dashboardStats && (
+              <button
+                onClick={handleAutoFill}
+                disabled={autoFilling}
+                className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all ${
+                  autoFilling
+                    ? 'bg-indigo-500/20 text-indigo-300 cursor-not-allowed'
+                    : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20'
+                }`}
+              >
+                <RefreshCw size={11} className={autoFilling ? 'animate-spin' : ''} />
+                {autoFilling ? (autoFillLog || 'Searching...') : 'Auto-fill with Genspark'}
+              </button>
+            )}
+            {dashboardStats && (
+              <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${
+                dashboardStats.dataSource === 'genspark'
+                  ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                  : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+              }`}>
+                {dashboardStats.dataSource === 'genspark' ? '⚡ AI Search' : '📄 Uploaded'}
+              </span>
+            )}
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           <MetricCard
@@ -114,18 +180,24 @@ export default function Dashboard() {
             <p className="text-slate-200 font-semibold text-base">No data ingested yet</p>
             <p className="text-[#4a5e78] text-sm mt-1">Upload documents or run an AI search to populate all charts.</p>
           </div>
-          <div className="flex gap-3">
-            <Link
-              href="/ingestion"
-              className="bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-xl text-sm font-semibold transition-all shadow-[0_0_20px_rgba(99,102,241,0.35)]"
+          <div className="flex flex-wrap gap-3 justify-center">
+            <button
+              onClick={handleAutoFill}
+              disabled={autoFilling}
+              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
+                autoFilling
+                  ? 'bg-indigo-500/30 text-indigo-300 cursor-not-allowed'
+                  : 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.35)]'
+              }`}
             >
-              Upload Documents
-            </Link>
+              <RefreshCw size={14} className={autoFilling ? 'animate-spin' : ''} />
+              {autoFilling ? (autoFillLog || 'Searching Genspark...') : 'Quick Fill with Genspark'}
+            </button>
             <Link
               href="/ingestion"
               className="bg-[#0f2040] hover:bg-[#152445] border border-[#1e3a5f]/50 text-slate-300 px-5 py-2 rounded-xl text-sm font-semibold transition-all"
             >
-              BPS Search
+              Upload Documents
             </Link>
           </div>
         </div>
