@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, UploadCloud, FileSpreadsheet, CheckCircle2, AlertCircle, Terminal, Download } from 'lucide-react';
 import { useDataStore, EconomicData } from '@/context/store';
+import { useReportStore } from '@/store/reportStore';
 import * as XLSX from 'xlsx';
 import { parseWorkbook, parseGDPSheet, detectGDPSheet } from '@/lib/parsers/xlsx';
 
@@ -16,6 +17,7 @@ export default function DataIngestion() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data, setData } = useDataStore();
+  const { setGDPHistorical, setRawWorkbook } = useReportStore();
 
   // Auto-scroll logs
   useEffect(() => {
@@ -82,6 +84,10 @@ export default function DataIngestion() {
         const wb = parseWorkbook(buffer);
         const gdpSheetKey = detectGDPSheet(wb);
         const gdpRows = gdpSheetKey ? parseGDPSheet(wb[gdpSheetKey]) : [];
+
+        // Write all historical rows to the report store (for the Historical GDP chart)
+        setGDPHistorical(gdpRows);
+        setRawWorkbook(wb, file.name);
 
         const gdpData = gdpRows
           .filter((d) => d.year >= 2018)
