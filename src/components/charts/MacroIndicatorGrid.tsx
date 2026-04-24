@@ -106,9 +106,9 @@ export default function MacroIndicatorGrid({
   data?: IndicatorGroup[];
 }) {
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden backdrop-blur-sm">
+    <div className="bg-[#0b1829] border border-[#1e3a5f]/50 rounded-xl overflow-hidden backdrop-blur-sm">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+      <div className="px-6 py-4 border-b border-[#1e3a5f]/50 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-slate-200">
             Quarterly Macroeconomic Outlook
@@ -137,8 +137,8 @@ export default function MacroIndicatorGrid({
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="border-b border-slate-800">
-              <th className="text-left px-5 py-3 text-slate-400 font-medium min-w-[180px] sticky left-0 bg-slate-900/95 backdrop-blur-sm z-10">
+            <tr className="border-b border-[#1e3a5f]/50">
+              <th className="text-left px-5 py-3 text-slate-400 font-medium min-w-[180px] sticky left-0 bg-[#0b1829] backdrop-blur-sm z-10">
                 Indicator
               </th>
               {PERIODS.map((p) => (
@@ -161,10 +161,10 @@ export default function MacroIndicatorGrid({
             {data.map((group) => (
               <React.Fragment key={group.category}>
                 {/* Category row */}
-                <tr className="border-b border-slate-800/50">
+                <tr className="border-b border-[#1e3a5f]/30">
                   <td
                     colSpan={PERIODS.length + 1}
-                    className="px-5 py-2 text-xs font-semibold text-slate-500 uppercase tracking-widest bg-slate-800/30"
+                    className="px-5 py-2 text-xs font-semibold text-slate-500 uppercase tracking-widest bg-[#0f2040]/60"
                   >
                     {group.category}
                   </td>
@@ -174,11 +174,11 @@ export default function MacroIndicatorGrid({
                 {group.indicators.map((row, rowIdx) => (
                   <tr
                     key={row.name}
-                    className={`border-b border-slate-800/30 hover:bg-slate-800/20 transition-colors ${
-                      rowIdx === group.indicators.length - 1 ? 'border-b border-slate-800/60' : ''
+                    className={`border-b border-[#1e3a5f]/30 hover:bg-[#0f2040]/40 transition-colors ${
+                      rowIdx === group.indicators.length - 1 ? 'border-b border-[#1e3a5f]/50' : ''
                     }`}
                   >
-                    <td className="px-5 py-2 text-slate-300 font-medium sticky left-0 bg-slate-900/95 backdrop-blur-sm z-10">
+                    <td className="px-5 py-2 text-slate-300 font-medium sticky left-0 bg-[#0b1829] backdrop-blur-sm z-10">
                       {row.name}
                     </td>
                     {PERIODS.map((p, i) => (

@@ -198,7 +198,7 @@ export default function CEOBriefPage() {
       {/* Setup panel */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upload existing report */}
-        <div className="bg-[#0c1425] border border-[#1a2744] rounded-xl p-5 space-y-4">
+        <div className="bg-[#0b1829] border border-[#1e3a5f]/50 rounded-2xl p-5 space-y-4">
           <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
             <BookOpen size={16} className="text-indigo-400" />
             Upload Existing Report (optional)
@@ -216,7 +216,7 @@ export default function CEOBriefPage() {
           />
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border border-dashed border-slate-700 hover:border-indigo-500/50 rounded-lg p-5 flex flex-col items-center gap-2 cursor-pointer transition-colors group"
+            className="border border-dashed border-[#1e3a5f]/50 hover:border-indigo-500/40 rounded-lg p-5 flex flex-col items-center gap-2 cursor-pointer transition-colors group"
           >
             {reportFile ? (
               <>
@@ -234,7 +234,7 @@ export default function CEOBriefPage() {
         </div>
 
         {/* Data context */}
-        <div className="bg-[#0c1425] border border-[#1a2744] rounded-xl p-5 space-y-4">
+        <div className="bg-[#0b1829] border border-[#1e3a5f]/50 rounded-2xl p-5 space-y-4">
           <h3 className="text-sm font-semibold text-slate-300">Current Data Context</h3>
 
           {hasDashboardData ? (
@@ -247,7 +247,7 @@ export default function CEOBriefPage() {
                     { label: 'Inflation', value: `${dashboardStats.inflationRate}%` },
                     { label: 'Projects', value: String(dashboardStats.totalProjects) },
                   ].map(({ label, value }) => (
-                    <div key={label} className="bg-slate-800/50 rounded-lg p-2.5">
+                    <div key={label} className="bg-[#0f2040]/60 rounded-xl p-2.5">
                       <p className="text-xs text-slate-500">{label}</p>
                       <p className="text-sm font-semibold text-slate-200">{value}</p>
                     </div>
@@ -280,7 +280,7 @@ export default function CEOBriefPage() {
               onChange={(e) => setFocus(e.target.value)}
               placeholder="e.g. Lead with renewable energy momentum, position vs Johor SEZ, highlight US–Indonesia trade framework…"
               rows={3}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300 placeholder-slate-600 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+              className="w-full bg-[#0b1829] border border-[#1e3a5f]/50 rounded-lg px-3 py-2 text-sm text-slate-300 placeholder-slate-600 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
             />
           </div>
         </div>
@@ -333,7 +333,7 @@ export default function CEOBriefPage() {
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Generated Chapter Storylines</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {chapters.map((ch, idx) => (
-              <div key={idx} className="bg-[#0c1425] border border-[#1a2744] rounded-xl p-4 space-y-2">
+              <div key={idx} className="bg-[#080f20] border border-[#1e3a5f]/50 rounded-2xl p-4 space-y-2">
                 <p className="text-xs font-bold text-indigo-400 uppercase tracking-wide">Chapter {idx + 1}</p>
                 <p className="text-sm font-semibold text-slate-100 leading-snug">{ch.title}</p>
                 {ch.angle && (
@@ -360,9 +360,9 @@ export default function CEOBriefPage() {
 
       {/* Output */}
       {(briefText || status === 'error') && (
-        <div className="bg-[#0c1425] border border-[#1a2744] rounded-xl overflow-hidden">
+        <div className="bg-[#0b1829] border border-[#1e3a5f]/50 rounded-2xl overflow-hidden">
           {/* Output header */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-[#1a2744]">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-[#1e3a5f]/50">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-slate-200">CEO Brief</span>
               {status === 'streaming' && (
@@ -385,7 +385,7 @@ export default function CEOBriefPage() {
                 </button>
                 <button
                   onClick={copyToClipboard}
-                  className="text-xs font-medium text-slate-400 hover:text-slate-200 bg-slate-800 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                  className="text-xs font-medium text-slate-400 hover:text-slate-200 bg-[#0f2040]/60 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
                 >
                   {copied ? <CheckCircle2 size={13} className="text-emerald-400" /> : <Copy size={13} />}
                   {copied ? 'Copied!' : 'Copy'}

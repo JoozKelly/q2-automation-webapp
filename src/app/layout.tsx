@@ -7,8 +7,25 @@ import Header from "@/components/ui/Header";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ReportAuto Q2 — Batam FTZ",
-  description: "Automated end-to-end report generation for Batam Tenants",
+  title: { default: 'VANTAGE', template: '%s — VANTAGE' },
+  description: 'Economic intelligence platform for Batam Free Trade Zone. AI-powered data ingestion, analysis and report generation.',
+  keywords: ['Batam', 'FTZ', 'economic intelligence', 'report automation', 'Indonesia', 'investment'],
+  authors: [{ name: 'VANTAGE Intelligence' }],
+  openGraph: {
+    title: 'VANTAGE — Batam FTZ Intelligence',
+    description: 'Economic intelligence platform for Batam Free Trade Zone.',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'VANTAGE — Batam FTZ Intelligence',
+    description: 'Economic intelligence platform for Batam Free Trade Zone.',
+  },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -18,7 +35,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.className} antialiased min-h-screen flex`} style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
+      <body
+        className={`${inter.className} antialiased min-h-screen flex`}
+        style={{ background: '#020917', color: '#f1f5f9' }}
+      >
         <Sidebar />
 
         <main className="flex-1 ml-64 min-h-screen overflow-x-hidden flex flex-col">

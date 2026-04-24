@@ -7,89 +7,113 @@ import { Save, FolderOpen, Clock } from 'lucide-react';
 import { useState } from 'react';
 
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
-  '/':               { title: 'Dashboard',       subtitle: 'Live economic overview for Batam FTZ' },
-  '/ingestion':      { title: 'Data Ingestion',  subtitle: 'Upload documents, scrape BPS data, fetch news' },
-  '/ceo-brief':      { title: 'CEO Brief',        subtitle: 'Plan your Q2 narrative arc and storyline' },
-  '/report-builder': { title: 'Report Builder',  subtitle: 'Generate section narratives and export PDF' },
+  '/':               { title: 'Dashboard',          subtitle: 'Live economic overview · Batam FTZ' },
+  '/ingestion':      { title: 'Data Ingestion',      subtitle: 'Upload documents · BPS search · News intelligence' },
+  '/ceo-brief':      { title: 'Storyline Planner',   subtitle: 'Plan your Q3 narrative arc and chapter structure' },
+  '/report-builder': { title: 'Report Builder',      subtitle: 'Generate section narratives and export PDF' },
 };
 
 export default function Header() {
   const pathname = usePathname();
-  const meta = PAGE_META[pathname] ?? { title: 'Batam Report', subtitle: '' };
+  const meta = PAGE_META[pathname] ?? { title: 'VANTAGE', subtitle: 'Batam FTZ Intelligence' };
 
   const reportStore = useReportStore();
   const { sessions, saveSession, activeSessionId } = useSessionStore();
-  const [saving, setSaving] = useState(false);
   const [sessionName, setSessionName] = useState('');
-  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const lastUpdated = reportStore.dashboardStats?.lastUpdated;
+  const activeSession = sessions.find((s) => s.id === activeSessionId);
 
   const handleSave = () => {
     if (!sessionName.trim()) return;
     saveSession(sessionName.trim(), {
-      data:            reportStore.data,
-      dashboardStats:  reportStore.dashboardStats,
-      macroGrid:       reportStore.macroGrid,
-      sectorSummaries: reportStore.sectorSummaries,
-      newsItems:       reportStore.newsItems,
-      ceoBrief:        reportStore.ceoBrief,
+      data:             reportStore.data,
+      dashboardStats:   reportStore.dashboardStats,
+      macroGrid:        reportStore.macroGrid,
+      sectorSummaries:  reportStore.sectorSummaries,
+      newsItems:        reportStore.newsItems,
+      ceoBrief:         reportStore.ceoBrief,
       uploadedFileName: reportStore.uploadedFileName,
     });
     setSessionName('');
-    setShowSaveModal(false);
+    setShowModal(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
   };
-
-  const activeSession = sessions.find((s) => s.id === activeSessionId);
 
   return (
     <>
-      <header className="h-16 flex items-center justify-between px-8 border-b border-[#1a2744] bg-[#060f1e]/90 backdrop-blur-md sticky top-0 z-10">
-        <div className="flex items-center gap-4">
-          <div>
-            <h2 className="text-base font-semibold text-slate-100 leading-tight">{meta.title}</h2>
-            <p className="text-xs text-slate-500 leading-tight hidden sm:block">{meta.subtitle}</p>
+      <header
+        className="h-16 flex items-center justify-between px-8 sticky top-0 z-10 shrink-0"
+        style={{
+          background: 'rgba(6, 14, 30, 0.85)',
+          backdropFilter: 'blur(16px)',
+          borderBottom: '1px solid rgba(30, 58, 95, 0.45)',
+        }}
+      >
+        {/* Left: page title */}
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-slate-100 leading-tight truncate">{meta.title}</h2>
+            <p className="text-[11px] text-[#4a5e78] leading-tight hidden sm:block truncate">{meta.subtitle}</p>
           </div>
 
           {activeSession && (
-            <div className="hidden md:flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs px-2.5 py-1 rounded-full">
+            <div
+              className="hidden md:flex items-center gap-1.5 text-indigo-300 text-[11px] px-2.5 py-1 rounded-full shrink-0"
+              style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}
+            >
               <FolderOpen size={11} />
-              <span className="font-medium">{activeSession.name}</span>
+              <span className="font-medium truncate max-w-[120px]">{activeSession.name}</span>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Right: metadata + save */}
+        <div className="flex items-center gap-3 shrink-0">
           {lastUpdated && (
-            <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-600">
+            <div className="hidden lg:flex items-center gap-1.5 text-[11px] text-[#4a5e78]">
               <Clock size={11} />
-              <span>Updated {new Date(lastUpdated).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+              <span>
+                {new Date(lastUpdated).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              </span>
             </div>
           )}
 
           <button
-            onClick={() => setShowSaveModal(true)}
-            className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 px-3 py-1.5 rounded-lg transition-all"
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-1.5 text-xs font-medium transition-all px-3 py-1.5 rounded-lg"
+            style={{
+              color: saved ? '#86efac' : '#8892a4',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(30,58,95,0.5)',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#f1f5f9'; e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = saved ? '#86efac' : '#8892a4'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
           >
             <Save size={13} />
-            Save Session
+            {saved ? 'Saved!' : 'Save Session'}
           </button>
         </div>
       </header>
 
-      {/* Save Session Modal */}
-      {showSaveModal && (
+      {/* Save modal */}
+      {showModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowSaveModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: 'rgba(2,9,23,0.7)', backdropFilter: 'blur(8px)' }}
+          onClick={() => setShowModal(false)}
         >
           <div
-            className="bg-[#0c1425] border border-[#1a2744] rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+            className="w-full max-w-sm p-6 rounded-2xl slide-up"
+            style={{ background: '#0b1829', border: '1px solid rgba(30,58,95,0.7)', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-bold text-slate-100 mb-1">Save Session</h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Save the current dashboard state as a named project you can return to later.
+            <p className="text-xs text-[#4a5e78] mb-5">
+              Name this session to save all dashboard data and narratives for later.
             </p>
             <input
               autoFocus
@@ -97,23 +121,26 @@ export default function Header() {
               onChange={(e) => setSessionName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
               placeholder={`e.g. Q2 2026 Draft — ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 mb-4"
+              className="w-full text-sm text-slate-200 placeholder-[#2a3a52] px-4 py-2.5 rounded-xl mb-4 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              style={{ background: '#060e1e', border: '1px solid rgba(30,58,95,0.7)' }}
             />
             <div className="flex gap-2">
               <button
                 onClick={handleSave}
                 disabled={!sessionName.trim()}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                  sessionName.trim()
-                    ? 'bg-indigo-500 hover:bg-indigo-600 text-white'
-                    : 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                }`}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                style={{
+                  background: sessionName.trim() ? '#6366f1' : 'rgba(99,102,241,0.1)',
+                  color: sessionName.trim() ? '#fff' : '#4a5e78',
+                  boxShadow: sessionName.trim() ? '0 0 24px rgba(99,102,241,0.4)' : 'none',
+                }}
               >
                 Save
               </button>
               <button
-                onClick={() => setShowSaveModal(false)}
-                className="flex-1 py-2 rounded-lg text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-400 transition-all"
+                onClick={() => setShowModal(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-[#8892a4] hover:text-slate-200 transition-colors"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(30,58,95,0.5)' }}
               >
                 Cancel
               </button>

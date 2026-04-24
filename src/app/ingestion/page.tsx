@@ -109,8 +109,8 @@ function SelectionPanel({
   const available = allKeys.filter((k) => sectionPresent(payload, k));
 
   return (
-    <div className="bg-[#0c1425] border border-indigo-500/30 rounded-2xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#1a2744] flex items-center justify-between">
+    <div className="bg-[#080f20] border border-indigo-500/30 rounded-2xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#1e3a5f]/50 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-slate-100">Choose Sections to Apply</h3>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -136,7 +136,7 @@ function SelectionPanel({
                   ? 'opacity-30 cursor-not-allowed border-transparent'
                   : checked
                   ? 'bg-indigo-500/10 border-indigo-500/30'
-                  : 'border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/30'
+                  : 'border-[#1e3a5f]/50 hover:border-[#1e3a5f] hover:bg-[#0f2040]/40'
               }`}
             >
               <div className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
@@ -156,14 +156,14 @@ function SelectionPanel({
         })}
       </div>
 
-      <div className="px-5 py-4 border-t border-[#1a2744] flex items-center gap-3">
+      <div className="px-5 py-4 border-t border-[#1e3a5f]/50 flex items-center gap-3">
         <button
           onClick={onApply}
           disabled={selected.size === 0}
           className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
             selected.size > 0
               ? 'bg-indigo-500 hover:bg-indigo-600 text-white'
-              : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+              : 'bg-[#0f2040]/60 text-slate-600 cursor-not-allowed'
           }`}
         >
           <ChevronRight size={15} />
@@ -431,15 +431,15 @@ export default function DataIngestion() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-900/50 border border-[#1a2744] p-1 rounded-xl w-fit">
+      <div className="flex gap-1 bg-[#0b1829] border border-[#1e3a5f]/50 p-1 rounded-xl w-fit">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               activeTab === tab.id
-                ? 'bg-indigo-500 text-white shadow'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#0f2040] text-indigo-300 ring-1 ring-inset ring-indigo-500/30'
+                : 'text-[#8892a4] hover:text-slate-200'
             }`}
           >
             {tab.icon} {tab.label}
@@ -454,7 +454,7 @@ export default function DataIngestion() {
             onDrop={onDrop}
             onDragOver={(e) => e.preventDefault()}
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-[#1a2744] hover:border-indigo-500/60 transition-colors rounded-2xl p-10 flex flex-col items-center justify-center text-center cursor-pointer group"
+            className="border-2 border-dashed border-[#1e3a5f]/50 hover:border-indigo-500/50 transition-colors rounded-2xl p-10 flex flex-col items-center justify-center text-center cursor-pointer group"
           >
             <UploadCloud size={40} className="text-slate-600 group-hover:text-indigo-400 mb-3 transition-colors" />
             <p className="text-slate-300 font-semibold">Drop files here or click to browse</p>
@@ -470,8 +470,8 @@ export default function DataIngestion() {
           </div>
 
           {files.length > 0 && (
-            <div className="bg-[#0c1425] border border-[#1a2744] rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-[#1a2744] flex items-center justify-between">
+            <div className="bg-[#0b1829] border border-[#1e3a5f]/50 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#1e3a5f]/50 flex items-center justify-between">
                 <span className="text-sm font-medium text-slate-300">
                   {files.length} file{files.length !== 1 ? 's' : ''} selected
                 </span>
@@ -482,7 +482,7 @@ export default function DataIngestion() {
                   Clear all
                 </button>
               </div>
-              <ul className="divide-y divide-[#1a2744]/60">
+              <ul className="divide-y divide-[#1e3a5f]/40">
                 {files.map((entry) => (
                   <li key={entry.id} className="flex items-center gap-3 px-4 py-3">
                     {fileIcon(entry.file)}
@@ -533,7 +533,7 @@ export default function DataIngestion() {
           </div>
 
           {analysisLog.length > 0 && (
-            <div className="bg-black/70 border border-[#1a2744] rounded-xl p-4 font-mono text-xs text-slate-300 space-y-1 max-h-40 overflow-y-auto">
+            <div className="bg-[#020917]/95 border border-[#1e3a5f]/40 rounded-xl p-4 font-mono text-xs text-slate-300 space-y-1 max-h-40 overflow-y-auto">
               {analysisLog.map((line, i) => (
                 <div key={i}><span className="text-indigo-500 select-none">› </span>{line}</div>
               ))}
@@ -554,7 +554,7 @@ export default function DataIngestion() {
             />
           )}
 
-          <div className="bg-slate-900/30 border border-[#1a2744]/50 rounded-xl p-4 text-xs text-slate-500 space-y-1">
+          <div className="bg-[#0b1829] border border-[#1e3a5f]/50 rounded-xl p-4 text-xs text-slate-500 space-y-1">
             <p className="font-medium text-slate-400">Supported file types</p>
             <p><span className="text-rose-400">PDF</span> — BPS publications, annual reports, government documents</p>
             <p><span className="text-emerald-400">XLSX / CSV</span> — GDP tables, investment data, sector statistics</p>
@@ -566,7 +566,7 @@ export default function DataIngestion() {
       {/* ── BPS Search Tab ────────────────────────────────────────────────── */}
       {activeTab === 'bps' && (
         <div className="space-y-6">
-          <div className="bg-[#0c1425] border border-[#1a2744] rounded-xl p-6 space-y-4">
+          <div className="bg-[#0b1829] border border-[#1e3a5f]/50 rounded-xl p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-blue-500/10 text-blue-400 rounded-lg">
                 <Database size={20} />
@@ -583,7 +583,7 @@ export default function DataIngestion() {
               the results into structured economic indicators for Batam FTZ.
             </p>
 
-            <div className="bg-slate-900/50 border border-[#1a2744] rounded-lg p-3 space-y-1.5">
+            <div className="bg-[#0b1829] border border-[#1e3a5f]/50 rounded-lg p-3 space-y-1.5">
               <p className="text-xs font-medium text-slate-400">Queries being run:</p>
               {[
                 '"BPS Batam" OR "batamkota.bps.go.id" PDRB pertumbuhan ekonomi 2024 2025',
@@ -611,8 +611,8 @@ export default function DataIngestion() {
           </div>
 
           {bpsLog.length > 0 && (
-            <div className="bg-black/80 border border-[#1a2744] rounded-xl p-4 font-mono text-xs h-[200px] flex flex-col">
-              <div className="flex items-center gap-2 text-slate-500 border-b border-[#1a2744] pb-2 mb-2">
+            <div className="bg-[#020917]/95 border border-[#1e3a5f]/40 rounded-xl p-4 font-mono text-xs h-[200px] flex flex-col">
+              <div className="flex items-center gap-2 text-slate-500 border-b border-[#1e3a5f]/50 pb-2 mb-2">
                 <Terminal size={13} />
                 <span>Search Agent Output</span>
               </div>
@@ -653,7 +653,7 @@ export default function DataIngestion() {
       {activeTab === 'news' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-[#0c1425] border border-[#1a2744] rounded-xl p-6 space-y-4">
+            <div className="bg-[#0b1829] border border-[#1e3a5f]/50 rounded-xl p-6 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-lg">
                   <Newspaper size={20} />
@@ -691,8 +691,8 @@ export default function DataIngestion() {
               </button>
             </div>
 
-            <div className="bg-black/80 border border-[#1a2744] rounded-xl p-4 font-mono text-xs h-[220px] flex flex-col">
-              <div className="flex items-center gap-2 text-slate-500 border-b border-[#1a2744] pb-2 mb-2">
+            <div className="bg-[#020917]/95 border border-[#1e3a5f]/40 rounded-xl p-4 font-mono text-xs h-[220px] flex flex-col">
+              <div className="flex items-center gap-2 text-slate-500 border-b border-[#1e3a5f]/50 pb-2 mb-2">
                 <Terminal size={13} />
                 <span>Agent Output</span>
               </div>
@@ -716,7 +716,7 @@ export default function DataIngestion() {
                 {newsItems.map((item) => (
                   <div
                     key={item.id}
-                    className="bg-[#0c1425] border border-[#1a2744] rounded-xl p-4 hover:border-slate-700 transition-colors"
+                    className="bg-[#0b1829] border border-[#1e3a5f]/50 rounded-xl p-4 hover:bg-[#0f2040]/60 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[item.category] ?? 'bg-slate-700 text-slate-300'}`}>

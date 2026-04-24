@@ -54,7 +54,7 @@ const CHAPTER_SECTION_MAP: Record<number, string> = {
 function StorylineGuide({ chapters }: { chapters: Chapter[] }) {
   const [open, setOpen] = useState(true);
   return (
-    <div className="bg-[#0a1628] border border-indigo-500/25 rounded-2xl overflow-hidden">
+    <div className="bg-[#080f20] border border-indigo-500/20 rounded-2xl overflow-hidden">
       <button
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-indigo-500/5 transition-colors"
@@ -72,9 +72,9 @@ function StorylineGuide({ chapters }: { chapters: Chapter[] }) {
       </button>
 
       {open && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-px bg-indigo-500/10 border-t border-indigo-500/20">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-px bg-[#0f2040]/10 border-t border-indigo-500/20">
           {chapters.map((ch, i) => (
-            <div key={i} className="bg-[#0a1628] p-4 space-y-2">
+            <div key={i} className="bg-[#080f20] p-4 space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-500">
                 Chapter {i + 1}
               </p>
@@ -104,7 +104,7 @@ function StorylineGuide({ chapters }: { chapters: Chapter[] }) {
 
 function ChapterHint({ chapter }: { chapter: Chapter }) {
   return (
-    <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-lg px-3 py-2.5 mb-3">
+    <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl px-3 py-2.5 mb-3">
       <div className="flex items-center gap-1.5 mb-1.5">
         <Lightbulb size={12} className="text-indigo-400" />
         <span className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">
@@ -160,7 +160,7 @@ function NarrativePane({
         value={narrative}
         onChange={(e) => onChange(e.target.value)}
         placeholder={isGenerating ? 'Writing narrative…' : 'Click Generate to draft AI copy, or type here…'}
-        className="flex-1 min-h-[180px] w-full bg-slate-900 border border-[#1a2744] rounded-lg px-4 py-3 text-sm text-slate-300 placeholder-slate-600 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+        className="flex-1 min-h-[180px] w-full bg-[#080f20] border border-[#1e3a5f]/50 rounded-lg px-4 py-3 text-sm text-slate-300 placeholder-slate-600 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
       />
     </div>
   );
@@ -191,10 +191,10 @@ function SectionWrapper({ meta, narrative, isGenerating, onGenerate, onNarrative
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="bg-[#0c1425] border border-[#1a2744] rounded-2xl overflow-hidden">
+    <div className="bg-[#0b1829] border border-[#1e3a5f]/50 rounded-2xl overflow-hidden">
       <button
         onClick={() => setCollapsed((c) => !c)}
-        className="w-full flex items-center justify-between px-6 py-4 border-b border-[#1a2744] hover:bg-slate-800/20 transition-colors text-left"
+        className="w-full flex items-center justify-between px-6 py-4 border-b border-[#1e3a5f]/50 hover:bg-[#0f2040]/40 transition-colors text-left"
       >
         <div className="flex items-center gap-4">
           <span className="text-2xl font-black text-slate-700">{meta.number}</span>
@@ -339,7 +339,7 @@ export default function ReportBuilder() {
       {chapters.length > 0 ? (
         <StorylineGuide chapters={chapters} />
       ) : (
-        <div className="bg-[#0c1425] border border-dashed border-[#1a2744] rounded-xl px-5 py-4 flex items-center justify-between">
+        <div className="bg-[#0b1829] border border-dashed border-[#1e3a5f]/40 rounded-2xl px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <BookOpen size={16} className="text-slate-600" />
             <div>
@@ -380,7 +380,7 @@ export default function ReportBuilder() {
               <SectorSection summaries={hasSectors ? sectorSummaries : undefined} />
             )}
             {meta.key === 'outlook' && (
-              <div className="rounded-xl bg-[#0a1628] border border-[#1a2744] p-5 space-y-3">
+              <div className="rounded-xl bg-[#080f20] border border-[#1e3a5f]/50 p-5 space-y-3">
                 {dashboardStats ? (
                   <div className="grid grid-cols-2 gap-3">
                     {[
@@ -389,7 +389,7 @@ export default function ReportBuilder() {
                       { label: 'Inflation', value: `${dashboardStats.inflationRate.toFixed(1)}% (${dashboardStats.inflationChange})` },
                       { label: 'Active Projects', value: String(dashboardStats.totalProjects) },
                     ].map(({ label, value }) => (
-                      <div key={label} className="bg-slate-800/50 rounded-lg p-3">
+                      <div key={label} className="bg-[#0f2040]/60 rounded-lg p-3">
                         <p className="text-xs text-slate-500 mb-0.5">{label}</p>
                         <p className="text-sm font-semibold text-slate-200">{value}</p>
                       </div>
