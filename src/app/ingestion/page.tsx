@@ -4,8 +4,9 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   UploadCloud, FileText, FileSpreadsheet, Image, X,
   Sparkles, Newspaper, CheckCircle2, AlertCircle, Terminal,
-  Download, RefreshCw, Database, ChevronRight,
+  Download, RefreshCw, Database, ChevronRight, Eye,
 } from 'lucide-react';
+import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import { useDataStore, EconomicData } from '@/context/store';
 import { useReportStore } from '@/store/reportStore';
 import type {
@@ -84,11 +85,73 @@ const CATEGORY_COLORS: Record<string, string> = {
   economy:        'bg-indigo-500/15 text-indigo-300',
 };
 
+const CATEGORY_BORDER: Record<string, string> = {
+  fdi:            'border-blue-500',
+  infrastructure: 'border-orange-500',
+  policy:         'border-purple-500',
+  sector:         'border-emerald-500',
+  geopolitics:    'border-rose-500',
+  economy:        'border-indigo-500',
+};
+
 const RELEVANCE_DOT: Record<string, string> = {
   high:   'bg-emerald-400',
   medium: 'bg-amber-400',
   low:    'bg-slate-500',
 };
+
+// ─── Data Preview ──────────────────────────────────────────────────────────
+
+function DataPreview({ payload }: { payload: IngestPayload }) {
+  const stats = payload.dashboardStats;
+  const chips = stats
+    ? [
+        { label: 'GDP Growth',      value: `${stats.gdpGrowthPct.toFixed(1)}%` },
+        { label: 'FDI Inflow',      value: stats.fdiInflow },
+        { label: 'Inflation Rate',  value: `${stats.inflationRate.toFixed(1)}%` },
+        { label: 'Active Projects', value: String(stats.totalProjects) },
+      ]
+    : [];
+
+  return (
+    <div className="bg-[#080f20] border border-indigo-500/20 rounded-2xl p-5 space-y-4">
+      <div className="flex items-center gap-2">
+        <Eye size={14} className="text-indigo-400" />
+        <span className="text-sm font-semibold text-slate-200">Data Preview</span>
+      </div>
+
+      {chips.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {chips.map((chip) => (
+            <div key={chip.label} className="bg-[#0f2040] border border-[#1e3a5f]/60 rounded-lg px-3 py-2 text-center min-w-[100px]">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wide">{chip.label}</p>
+              <p className="text-sm font-bold text-indigo-300 mt-0.5">{chip.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {payload.gdpData && payload.gdpData.length > 0 && (
+        <div>
+          <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">GDP Trend</p>
+          <div style={{ height: 60 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={payload.gdpData}>
+                <Line type="monotone" dataKey="gdp" stroke="#6366f1" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {payload.newsItems && payload.newsItems.length > 0 && (
+        <p className="text-xs text-slate-500">
+          Also contains <span className="text-slate-300 font-medium">{payload.newsItems.length}</span> news items
+        </p>
+      )}
+    </div>
+  );
+}
 
 // ─── Selection Panel ────────────────────────────────────────────────────────
 
@@ -541,6 +604,10 @@ export default function DataIngestion() {
           )}
 
           {pendingPayload && (
+            <DataPreview payload={pendingPayload} />
+          )}
+
+          {pendingPayload && (
             <SelectionPanel
               payload={pendingPayload}
               selected={selectedSections}
@@ -627,6 +694,10 @@ export default function DataIngestion() {
           )}
 
           {pendingPayload && activeTab === 'bps' && (
+            <DataPreview payload={pendingPayload} />
+          )}
+
+          {pendingPayload && activeTab === 'bps' && (
             <SelectionPanel
               payload={pendingPayload}
               selected={selectedSections}
@@ -710,29 +781,54 @@ export default function DataIngestion() {
           </div>
 
           {newsItems.length > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <h3 className="text-sm font-semibold text-slate-300">{newsItems.length} News Items</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {newsItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-[#0b1829] border border-[#1e3a5f]/50 rounded-xl p-4 hover:bg-[#0f2040]/60 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[item.category] ?? 'bg-slate-700 text-slate-300'}`}>
-                        {item.category}
-                      </span>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className={`w-2 h-2 rounded-full ${RELEVANCE_DOT[item.relevance] ?? 'bg-slate-500'}`} />
-                        <span className="text-xs text-slate-500 capitalize">{item.relevance}</span>
+
+              {/* Featured article */}
+              <div className={`bg-[#0b1829] border border-[#1e3a5f]/50 rounded-xl overflow-hidden border-l-4 ${CATEGORY_BORDER[newsItems[0].category] ?? 'border-slate-500'}`}>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[newsItems[0].category] ?? 'bg-slate-700 text-slate-300'}`}>
+                      {newsItems[0].category}
+                    </span>
+                    <span className={`text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded ${
+                      newsItems[0].relevance === 'high'
+                        ? 'bg-emerald-500/15 text-emerald-300'
+                        : newsItems[0].relevance === 'medium'
+                        ? 'bg-amber-500/15 text-amber-300'
+                        : 'bg-slate-500/15 text-slate-400'
+                    }`}>
+                      {newsItems[0].relevance}
+                    </span>
+                  </div>
+                  <h4 className="text-xl font-bold text-slate-100 leading-snug mb-3">{newsItems[0].title}</h4>
+                  <p className="text-sm text-slate-400 leading-relaxed mb-4">{newsItems[0].summary}</p>
+                  <p className="text-xs text-slate-600">{newsItems[0].source} · {newsItems[0].date}</p>
+                </div>
+              </div>
+
+              {/* Secondary grid */}
+              {newsItems.length > 1 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {newsItems.slice(1).map((item) => (
+                    <div
+                      key={item.id}
+                      className={`bg-[#0b1829] border border-[#1e3a5f]/50 rounded-xl overflow-hidden border-l-[3px] ${CATEGORY_BORDER[item.category] ?? 'border-slate-500'} hover:bg-[#0f2040]/60 transition-colors`}
+                    >
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[item.category] ?? 'bg-slate-700 text-slate-300'}`}>
+                            {item.category}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-semibold text-slate-100 leading-snug mb-1">{item.title}</h4>
+                        <p className="text-xs text-slate-400 leading-relaxed mb-2 line-clamp-2">{item.summary}</p>
+                        <p className="text-xs text-slate-600">{item.source} · {item.date}</p>
                       </div>
                     </div>
-                    <h4 className="text-sm font-semibold text-slate-100 leading-snug mb-1">{item.title}</h4>
-                    <p className="text-xs text-slate-400 leading-relaxed mb-2">{item.summary}</p>
-                    <p className="text-xs text-slate-600">{item.source} · {item.date}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

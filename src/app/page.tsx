@@ -10,7 +10,6 @@ import { Database, TrendingUp, TrendingDown, Newspaper, ChevronRight, Sparkles }
 import Link from 'next/link';
 import MacroIndicatorGrid from '@/components/charts/MacroIndicatorGrid';
 import GDPHistoricalChart from '@/components/charts/GDPHistoricalChart';
-import type { NewsItem } from '@/types/report';
 
 export default function Dashboard() {
   const { data } = useDataStore();
@@ -263,10 +262,44 @@ export default function Dashboard() {
             </Link>
           </div>
         ) : (
-          <div className="divide-y divide-[#1e3a5f]/30">
-            {newsItems.slice(0, 6).map((item) => (
-              <NewsCard key={item.id} item={item} />
-            ))}
+          <div className="p-5 space-y-4">
+            {/* Featured article */}
+            <div className={`bg-[#0b1829] border border-[#1e3a5f]/50 rounded-xl overflow-hidden border-l-4 ${CATEGORY_BORDER[newsItems[0].category] ?? 'border-slate-500'}`}>
+              <div className="p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[newsItems[0].category] ?? 'bg-slate-700 text-slate-300'}`}>
+                    {newsItems[0].category}
+                  </span>
+                  <span className="text-xs text-slate-600">{newsItems[0].date}</span>
+                </div>
+                <h4 className="text-lg font-bold text-slate-100 leading-snug mb-2">{newsItems[0].title}</h4>
+                <p className="text-sm text-slate-400 leading-relaxed mb-3">{newsItems[0].summary}</p>
+                <p className="text-xs text-slate-600">{newsItems[0].source}</p>
+              </div>
+            </div>
+
+            {/* Secondary grid */}
+            {newsItems.length > 1 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {newsItems.slice(1, 5).map((item) => (
+                  <div
+                    key={item.id}
+                    className={`bg-[#060e1e] border border-[#1e3a5f]/50 rounded-xl overflow-hidden border-l-[3px] ${CATEGORY_BORDER[item.category] ?? 'border-slate-500'} hover:bg-[#0f2040]/60 transition-colors`}
+                  >
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[item.category] ?? 'bg-slate-700 text-slate-300'}`}>
+                          {item.category}
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-semibold text-slate-100 leading-snug mb-1">{item.title}</h4>
+                      <p className="text-xs text-slate-400 leading-relaxed mb-2 line-clamp-2">{item.summary}</p>
+                      <p className="text-xs text-slate-600">{item.source} · {item.date}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -283,25 +316,14 @@ const CATEGORY_COLORS: Record<string, string> = {
   economy:        'bg-indigo-500/15 text-indigo-300',
 };
 
-function NewsCard({ item }: { item: NewsItem }) {
-  return (
-    <div className="p-5 hover:bg-[#0f2040]/60 transition-colors">
-      <div className="flex items-center gap-2 mb-2">
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[item.category] ?? 'bg-slate-700 text-slate-300'}`}>
-          {item.category}
-        </span>
-        <span className="text-xs text-slate-600">{item.date}</span>
-      </div>
-      <h4 className="text-sm font-semibold text-slate-100 leading-snug mb-1.5">
-        {item.title}
-      </h4>
-      <p className="text-xs text-slate-400 leading-relaxed line-clamp-3">
-        {item.summary}
-      </p>
-      <p className="text-xs text-slate-600 mt-2">{item.source}</p>
-    </div>
-  );
-}
+const CATEGORY_BORDER: Record<string, string> = {
+  fdi:            'border-blue-500',
+  infrastructure: 'border-orange-500',
+  policy:         'border-purple-500',
+  sector:         'border-emerald-500',
+  geopolitics:    'border-rose-500',
+  economy:        'border-indigo-500',
+};
 
 function MetricCard({ title, value, change, isPositive, empty, accentColor }: {
   title: string;

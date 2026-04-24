@@ -6,20 +6,35 @@ export const dynamic = 'force-dynamic';
 const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20 MB
 
 function extractJSON(text: string): string | null {
-  const stripped = text.replace(/```(?:json)?\s*/gi, '');
-  const start = stripped.indexOf('{');
-  if (start === -1) return null;
-  let depth = 0; let inString = false; let escape = false;
-  for (let i = start; i < stripped.length; i++) {
-    const ch = stripped[i];
-    if (escape)                  { escape = false; continue; }
-    if (ch === '\\' && inString) { escape = true;  continue; }
-    if (ch === '"')              { inString = !inString; continue; }
-    if (inString)                continue;
-    if (ch === '{') depth++;
-    if (ch === '}') { depth--; if (depth === 0) return stripped.slice(start, i + 1); }
+  const s = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '');
+  const candidates: string[] = [];
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] !== '{') continue;
+    let depth = 0, inStr = false, esc = false;
+    for (let j = i; j < s.length; j++) {
+      const c = s[j];
+      if (esc)               { esc = false; continue; }
+      if (c === '\\' && inStr) { esc = true; continue; }
+      if (c === '"')         { inStr = !inStr; continue; }
+      if (inStr)             continue;
+      if (c === '{') depth++;
+      if (c === '}') { depth--; if (depth === 0) { candidates.push(s.slice(i, j + 1)); i = j; break; } }
+    }
   }
-  return null;
+  if (!candidates.length) return null;
+  return candidates.reduce((a, b) => (a.length > b.length ? a : b));
+}
+
+function repairAndParse(raw: string): unknown {
+  const extracted = extractJSON(raw);
+  if (!extracted) throw new Error('No JSON object found in model response');
+  try { return JSON.parse(extracted); } catch (_) {}
+  const repaired = extracted
+    .replace(/\/\/[^\n\r]*/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/,(\s*[}\]])/g, '$1')
+    .replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)(\s*:)/g, '$1"$2"$3');
+  return JSON.parse(repaired);
 }
 
 function buildExtractionPrompt(fileNames: string[]): string {
@@ -203,15 +218,13 @@ export async function POST(request: Request) {
     const client = new Anthropic({ apiKey });
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
+      max_tokens: 6000,
       messages: [{ role: 'user', content: contentBlocks }],
     });
 
     const raw = message.content[0].type === 'text' ? message.content[0].text : '';
-    const jsonStr = extractJSON(raw);
-    if (!jsonStr) throw new Error('Model did not return valid JSON');
-    const parsed = JSON.parse(jsonStr);
-    return Response.json({ ok: true, ...parsed });
+    const parsed = repairAndParse(raw);
+    return Response.json({ ok: true, ...(parsed as object) });
   } catch (err) {
     console.error('analyze-files error:', err);
     return Response.json(
