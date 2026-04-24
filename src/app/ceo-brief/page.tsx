@@ -31,6 +31,33 @@ function MarkdownSection({ text }: { text: string }) {
   );
 }
 
+function parseChapters(text: string): { title: string; angle: string; keyMessage: string; points: string[] }[] {
+  const chapters: { title: string; angle: string; keyMessage: string; points: string[] }[] = [];
+  const chapterBlocks = text.split(/(?=### Chapter \d+:)/g).filter(b => b.startsWith('### Chapter'));
+  for (const block of chapterBlocks) {
+    const titleMatch = block.match(/### Chapter \d+:\s*(.+)/);
+    const angleMatch = block.match(/\*\*Angle:\*\*\s*(.+)/);
+    const msgMatch = block.match(/\*\*Key message:\*\*\s*(.+)/);
+    const pointMatches = [...block.matchAll(/^- (.+)/gm)];
+    if (!titleMatch) continue;
+    chapters.push({
+      title: titleMatch[1].trim(),
+      angle: angleMatch?.[1]?.trim() ?? '',
+      keyMessage: msgMatch?.[1]?.trim() ?? '',
+      points: pointMatches.slice(0, 3).map(m => m[1]),
+    });
+  }
+  return chapters;
+}
+
+const CHAPTER_PILLS = [
+  'Ch 1: Macro Foundation',
+  'Ch 2: Infra & Policy',
+  'Ch 3: Geopolitical',
+  'Ch 4: Sector Momentum',
+  'Ch 5: H2 2026 Setup',
+];
+
 export default function CEOBriefPage() {
   const [reportFile, setReportFile] = useState<File | null>(null);
   const [focus, setFocus] = useState('');
@@ -154,22 +181,24 @@ export default function CEOBriefPage() {
   };
 
   const hasDashboardData = !!dashboardStats || !!chartData;
+  const chapters = status === 'done' ? parseChapters(briefText) : [];
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-slate-100">CEO Brief Generator</h2>
+        <h2 className="text-2xl font-bold text-slate-100">Q3 Storyline Planner</h2>
         <p className="text-slate-400 mt-1 text-sm">
-          Upload your existing quarterly report and/or use ingested data to generate a CEO-level
-          briefing with recommended narrative arc and talking points.
+          Use your Q2 data to plan the narrative arc for next quarter. Upload your existing Q2 report
+          and/or use ingested data to generate recommended storylines, talking points, and a chapter
+          structure for your Q3 CEO briefing.
         </p>
       </div>
 
       {/* Setup panel */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upload existing report */}
-        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5 space-y-4">
+        <div className="bg-[#0c1425] border border-[#1a2744] rounded-xl p-5 space-y-4">
           <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
             <BookOpen size={16} className="text-indigo-400" />
             Upload Existing Report (optional)
@@ -205,7 +234,7 @@ export default function CEOBriefPage() {
         </div>
 
         {/* Data context */}
-        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5 space-y-4">
+        <div className="bg-[#0c1425] border border-[#1a2744] rounded-xl p-5 space-y-4">
           <h3 className="text-sm font-semibold text-slate-300">Current Data Context</h3>
 
           {hasDashboardData ? (
@@ -244,16 +273,31 @@ export default function CEOBriefPage() {
 
           <div>
             <label className="text-xs font-medium text-slate-400 block mb-1.5">
-              Focus areas (optional)
+              Strategic priorities to emphasise
             </label>
             <textarea
               value={focus}
               onChange={(e) => setFocus(e.target.value)}
-              placeholder="e.g. Emphasise Singapore–Batam corridor, renewable energy transition, competitive positioning vs Johor…"
+              placeholder="e.g. Lead with renewable energy momentum, position vs Johor SEZ, highlight US–Indonesia trade framework…"
               rows={3}
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300 placeholder-slate-600 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
             />
           </div>
+        </div>
+      </div>
+
+      {/* Chapter Structure Preview */}
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Chapter Structure</p>
+        <div className="flex flex-wrap gap-2">
+          {CHAPTER_PILLS.map((pill) => (
+            <span
+              key={pill}
+              className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs px-3 py-1.5 rounded-full"
+            >
+              {pill}
+            </span>
+          ))}
         </div>
       </div>
 
@@ -283,11 +327,42 @@ export default function CEOBriefPage() {
         )}
       </div>
 
+      {/* Chapter Cards — shown after generation */}
+      {status === 'done' && chapters.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Generated Chapter Storylines</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {chapters.map((ch, idx) => (
+              <div key={idx} className="bg-[#0c1425] border border-[#1a2744] rounded-xl p-4 space-y-2">
+                <p className="text-xs font-bold text-indigo-400 uppercase tracking-wide">Chapter {idx + 1}</p>
+                <p className="text-sm font-semibold text-slate-100 leading-snug">{ch.title}</p>
+                {ch.angle && (
+                  <p className="text-xs text-indigo-300 italic">{ch.angle}</p>
+                )}
+                {ch.keyMessage && (
+                  <p className="text-xs text-slate-400 leading-relaxed">{ch.keyMessage}</p>
+                )}
+                {ch.points.length > 0 && (
+                  <ul className="space-y-1 pt-1">
+                    {ch.points.map((pt, pi) => (
+                      <li key={pi} className="flex gap-1.5 text-xs text-slate-400">
+                        <span className="text-indigo-500 shrink-0 mt-0.5">•</span>
+                        <span>{pt}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Output */}
       {(briefText || status === 'error') && (
-        <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+        <div className="bg-[#0c1425] border border-[#1a2744] rounded-xl overflow-hidden">
           {/* Output header */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-[#1a2744]">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-slate-200">CEO Brief</span>
               {status === 'streaming' && (

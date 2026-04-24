@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from 'react';
-import { Sparkles, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Sparkles, Download, ChevronDown, ChevronUp, BookOpen, Lightbulb } from 'lucide-react';
 import { usePDF } from 'react-to-pdf';
 import { useDataStore } from '@/context/store';
 import { useReportStore } from '@/store/reportStore';
@@ -9,29 +9,135 @@ import InfraSection from '@/components/sections/InfraSection';
 import GeoSection from '@/components/sections/GeoSection';
 import SectorSection from '@/components/sections/SectorSection';
 import ReportPDFContent from '@/components/pdf/ReportPDFContent';
+import Link from 'next/link';
 
-type SectionKey = 'infra' | 'geo' | 'sector' | 'outlook';
+// ─── CEO brief chapter parser ────────────────────────────────────────────────
 
-const SECTION_META: { key: SectionKey; number: string; title: string; subtitle: string }[] = [
-  { key: 'infra',   number: '02', title: 'Infrastructure & Government Plans', subtitle: 'Progress on key infrastructure categories' },
-  { key: 'geo',     number: '03', title: 'Geopolitical Events',              subtitle: 'Major events and their impact on Batam' },
-  { key: 'sector',  number: '04', title: 'Sector Update',                    subtitle: 'Active projects by industry cluster' },
-  { key: 'outlook', number: '05', title: 'Forward Looking Outlook',          subtitle: 'Key themes and risks ahead' },
-];
+interface Chapter {
+  title: string;
+  angle: string;
+  keyMessage: string;
+  points: string[];
+}
+
+function parseChapters(text: string): Chapter[] {
+  if (!text) return [];
+  const chapters: Chapter[] = [];
+  const blocks = text.split(/(?=### Chapter \d+:)/g).filter((b) => b.startsWith('### Chapter'));
+  for (const block of blocks) {
+    const titleMatch = block.match(/### Chapter \d+:\s*(.+)/);
+    const angleMatch = block.match(/\*\*Angle:\*\*\s*(.+)/);
+    const msgMatch   = block.match(/\*\*Key message:\*\*\s*(.+)/);
+    const pointMatches = [...block.matchAll(/^- (.+)/gm)];
+    if (!titleMatch) continue;
+    chapters.push({
+      title:      titleMatch[1].trim(),
+      angle:      angleMatch?.[1]?.trim() ?? '',
+      keyMessage: msgMatch?.[1]?.trim() ?? '',
+      points:     pointMatches.slice(0, 3).map((m) => m[1]),
+    });
+  }
+  return chapters;
+}
+
+// Map chapter index → section key
+const CHAPTER_SECTION_MAP: Record<number, string> = {
+  0: 'infra',    // Chapter 1: Macro Foundation → we use it for context
+  1: 'infra',    // Chapter 2: Infra & Policy
+  2: 'geo',      // Chapter 3: Geopolitical
+  3: 'sector',   // Chapter 4: Sector Momentum
+  4: 'outlook',  // Chapter 5: H2 Setup
+};
+
+// ─── Storyline Guide panel ───────────────────────────────────────────────────
+
+function StorylineGuide({ chapters }: { chapters: Chapter[] }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="bg-[#0a1628] border border-indigo-500/25 rounded-2xl overflow-hidden">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-indigo-500/5 transition-colors"
+      >
+        <div className="flex items-center gap-2.5">
+          <BookOpen size={15} className="text-indigo-400" />
+          <span className="text-sm font-semibold text-indigo-300">Q3 Storyline Guide</span>
+          <span className="text-xs text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded-full">
+            {chapters.length} chapters from CEO Brief
+          </span>
+        </div>
+        {open
+          ? <ChevronUp size={15} className="text-slate-500" />
+          : <ChevronDown size={15} className="text-slate-500" />}
+      </button>
+
+      {open && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-px bg-indigo-500/10 border-t border-indigo-500/20">
+          {chapters.map((ch, i) => (
+            <div key={i} className="bg-[#0a1628] p-4 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-500">
+                Chapter {i + 1}
+              </p>
+              <p className="text-xs font-semibold text-slate-200 leading-snug">{ch.title}</p>
+              {ch.angle && (
+                <p className="text-[11px] text-indigo-300/80 italic leading-snug">{ch.angle}</p>
+              )}
+              {ch.points.length > 0 && (
+                <ul className="space-y-0.5 pt-1">
+                  {ch.points.map((pt, j) => (
+                    <li key={j} className="flex gap-1.5 text-[11px] text-slate-400 leading-relaxed">
+                      <span className="text-indigo-500 shrink-0 mt-0.5">·</span>
+                      {pt}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Section chapter hint ────────────────────────────────────────────────────
+
+function ChapterHint({ chapter }: { chapter: Chapter }) {
+  return (
+    <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-lg px-3 py-2.5 mb-3">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <Lightbulb size={12} className="text-indigo-400" />
+        <span className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">
+          CEO Brief angle
+        </span>
+      </div>
+      {chapter.angle && (
+        <p className="text-xs text-indigo-300 italic mb-1">{chapter.angle}</p>
+      )}
+      {chapter.keyMessage && (
+        <p className="text-xs text-slate-400 leading-snug">{chapter.keyMessage}</p>
+      )}
+    </div>
+  );
+}
+
+// ─── Narrative pane ──────────────────────────────────────────────────────────
 
 function NarrativePane({
   narrative,
   isGenerating,
   onGenerate,
   onChange,
+  chapter,
 }: {
   narrative: string;
   isGenerating: boolean;
   onGenerate: () => void;
   onChange: (v: string) => void;
+  chapter?: Chapter;
 }) {
   return (
-    <div className="flex flex-col gap-3 h-full">
+    <div className="flex flex-col gap-2 h-full">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">AI Narrative</span>
         <button
@@ -47,15 +153,29 @@ function NarrativePane({
           {isGenerating ? 'Generating…' : 'Generate'}
         </button>
       </div>
+      {chapter && (chapter.angle || chapter.keyMessage) && (
+        <ChapterHint chapter={chapter} />
+      )}
       <textarea
         value={narrative}
         onChange={(e) => onChange(e.target.value)}
         placeholder={isGenerating ? 'Writing narrative…' : 'Click Generate to draft AI copy, or type here…'}
-        className="flex-1 min-h-[180px] w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-300 placeholder-slate-600 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+        className="flex-1 min-h-[180px] w-full bg-slate-900 border border-[#1a2744] rounded-lg px-4 py-3 text-sm text-slate-300 placeholder-slate-600 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
       />
     </div>
   );
 }
+
+// ─── Section wrapper ─────────────────────────────────────────────────────────
+
+type SectionKey = 'infra' | 'geo' | 'sector' | 'outlook';
+
+const SECTION_META: { key: SectionKey; number: string; title: string; subtitle: string }[] = [
+  { key: 'infra',   number: '02', title: 'Infrastructure & Government Plans', subtitle: 'Progress on key infrastructure categories' },
+  { key: 'geo',     number: '03', title: 'Geopolitical Events',               subtitle: 'Major events and their impact on Batam' },
+  { key: 'sector',  number: '04', title: 'Sector Update',                     subtitle: 'Active projects by industry cluster' },
+  { key: 'outlook', number: '05', title: 'Forward Looking Outlook',           subtitle: 'Key themes and risks ahead' },
+];
 
 interface SectionWrapperProps {
   meta: (typeof SECTION_META)[number];
@@ -63,17 +183,18 @@ interface SectionWrapperProps {
   isGenerating: boolean;
   onGenerate: () => void;
   onNarrativeChange: (v: string) => void;
+  chapter?: Chapter;
   children: React.ReactNode;
 }
 
-function SectionWrapper({ meta, narrative, isGenerating, onGenerate, onNarrativeChange, children }: SectionWrapperProps) {
+function SectionWrapper({ meta, narrative, isGenerating, onGenerate, onNarrativeChange, chapter, children }: SectionWrapperProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
+    <div className="bg-[#0c1425] border border-[#1a2744] rounded-2xl overflow-hidden">
       <button
         onClick={() => setCollapsed((c) => !c)}
-        className="w-full flex items-center justify-between px-6 py-4 border-b border-slate-800 hover:bg-slate-800/30 transition-colors text-left"
+        className="w-full flex items-center justify-between px-6 py-4 border-b border-[#1a2744] hover:bg-slate-800/20 transition-colors text-left"
       >
         <div className="flex items-center gap-4">
           <span className="text-2xl font-black text-slate-700">{meta.number}</span>
@@ -93,6 +214,7 @@ function SectionWrapper({ meta, narrative, isGenerating, onGenerate, onNarrative
             isGenerating={isGenerating}
             onGenerate={onGenerate}
             onChange={onNarrativeChange}
+            chapter={chapter}
           />
         </div>
       )}
@@ -100,9 +222,11 @@ function SectionWrapper({ meta, narrative, isGenerating, onGenerate, onNarrative
   );
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function ReportBuilder() {
-  const { data: chartData } = useDataStore();
-  const { data: reportData, sectorSummaries, dashboardStats } = useReportStore();
+  const { data: chartData }  = useDataStore();
+  const { data: reportData, sectorSummaries, dashboardStats, ceoBrief } = useReportStore();
   const { toPDF, targetRef } = usePDF({ filename: 'Batam_Economic_Outlook_Q2_2026.pdf' });
 
   const [narratives, setNarratives] = useState<Record<SectionKey, string>>({
@@ -118,28 +242,42 @@ export default function ReportBuilder() {
   const setGen = (key: SectionKey, val: boolean) =>
     setGenerating((prev) => ({ ...prev, [key]: val }));
 
+  const chapters = useMemo(() => parseChapters(ceoBrief), [ceoBrief]);
+
+  // Map section key → the most relevant chapter
+  const sectionChapter: Record<SectionKey, Chapter | undefined> = useMemo(() => ({
+    infra:   chapters[1],  // Ch 2: Infra & Policy
+    geo:     chapters[2],  // Ch 3: Geopolitical
+    sector:  chapters[3],  // Ch 4: Sector Momentum
+    outlook: chapters[4],  // Ch 5: H2 2026 Setup
+  }), [chapters]);
+
   const buildPrompt = (key: SectionKey): string => {
+    const chapterCtx = sectionChapter[key]
+      ? `CEO Brief angle for this section: "${sectionChapter[key]!.angle}". Key message to convey: "${sectionChapter[key]!.keyMessage}". Talking points: ${sectionChapter[key]!.points.join('; ')}.`
+      : '';
+
     const infra = reportData.infraProjects.length > 0
       ? `Infrastructure projects: ${JSON.stringify(reportData.infraProjects)}`
       : 'Batam infrastructure: power grid expansion, road networks, water supply, fibre connectivity, port upgrades, tax incentives.';
 
     const geo = reportData.geoEvents.length > 0
       ? `Geopolitical events: ${JSON.stringify(reportData.geoEvents)}`
-      : 'Key events: Rempang Island MOU (US×Indonesia), Carbon Neutral Industrial Park (Sembcorp), Singapore Solar Offtake, US–IDN Trade Framework.';
+      : 'Key events: Rempang Island MOU (US×Indonesia), Carbon Neutral Industrial Park, Singapore Solar Offtake, US–IDN Trade Framework.';
 
     const sector = sectorSummaries.length > 0
       ? `Sector data: ${JSON.stringify(sectorSummaries)}`
-      : 'Sectors: Electronics/EMS (9 projects), Solar (6), Data Centers (4), BESS (3), Medical (2), E-Cigarettes (4).';
+      : 'Sectors: Electronics/EMS (9), Solar (6), Data Centers (4), BESS (3), Medical (2), E-Cigarettes (4).';
 
     const macroContext = dashboardStats
       ? `GDP growth: ${dashboardStats.gdpGrowthPct}% (${dashboardStats.gdpGrowthChange}), FDI: ${dashboardStats.fdiInflow} (${dashboardStats.fdiChange}), Inflation: ${dashboardStats.inflationRate}% (${dashboardStats.inflationChange}).`
       : chartData?.summary ?? 'Batam Q2 2026 economic data.';
 
     const prompts: Record<SectionKey, string> = {
-      infra: `Write a professional 2-paragraph narrative on Batam's infrastructure progress for Q2 2026. Context: ${infra} Macro: ${macroContext} Be specific, business-oriented, and highlight tenant implications.`,
-      geo: `Write a professional 2-paragraph narrative on major geopolitical events affecting Batam in Q2 2026. Context: ${geo} Macro: ${macroContext} Analyse FDI and tenant impact.`,
-      sector: `Write a professional 2-paragraph narrative on Batam's sector update for Q2 2026. Context: ${sector} Macro: ${macroContext} Highlight growth momentum and key players.`,
-      outlook: `Write a professional 3-paragraph forward-looking outlook for Batam FTZ in H2 2026. Macro context: ${macroContext} Cover macro risks, infrastructure pipeline, sector opportunities, and strategic positioning vs Johor and Vietnam. End with an executive recommendation for tenants.`,
+      infra: `Write a professional 2-paragraph narrative on Batam's infrastructure progress for Q2 2026. ${chapterCtx} Context: ${infra} Macro: ${macroContext} Be specific, business-oriented, and highlight tenant implications.`,
+      geo: `Write a professional 2-paragraph narrative on major geopolitical events affecting Batam in Q2 2026. ${chapterCtx} Context: ${geo} Macro: ${macroContext} Analyse FDI and tenant impact.`,
+      sector: `Write a professional 2-paragraph narrative on Batam's sector update for Q2 2026. ${chapterCtx} Context: ${sector} Macro: ${macroContext} Highlight growth momentum and key players.`,
+      outlook: `Write a professional 3-paragraph forward-looking outlook for Batam FTZ in H2 2026. ${chapterCtx} Macro context: ${macroContext} Cover macro risks, infrastructure pipeline, sector opportunities, and strategic positioning vs Johor and Vietnam. End with an executive recommendation for tenants.`,
     };
     return prompts[key];
   };
@@ -170,7 +308,7 @@ export default function ReportBuilder() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Hidden styled PDF target */}
+      {/* Hidden PDF target */}
       <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }} ref={targetRef}>
         <ReportPDFContent narratives={narratives} period="Q2 2026" stats={dashboardStats} />
       </div>
@@ -197,6 +335,29 @@ export default function ReportBuilder() {
         </button>
       </div>
 
+      {/* CEO Brief Storyline Guide */}
+      {chapters.length > 0 ? (
+        <StorylineGuide chapters={chapters} />
+      ) : (
+        <div className="bg-[#0c1425] border border-dashed border-[#1a2744] rounded-xl px-5 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <BookOpen size={16} className="text-slate-600" />
+            <div>
+              <p className="text-sm font-medium text-slate-400">No storyline guide yet</p>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Generate a CEO Brief to unlock an AI-driven chapter guide that shapes each section's narrative.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/ceo-brief"
+            className="shrink-0 text-xs font-medium text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            Go to Storyline Planner →
+          </Link>
+        </div>
+      )}
+
       {/* Sections */}
       <div className="space-y-4">
         {SECTION_META.map((meta) => (
@@ -207,6 +368,7 @@ export default function ReportBuilder() {
             isGenerating={generating[meta.key]}
             onGenerate={() => handleGenerate(meta.key)}
             onNarrativeChange={(v) => setNarrative(meta.key, v)}
+            chapter={sectionChapter[meta.key]}
           >
             {meta.key === 'infra' && (
               <InfraSection projects={hasInfra ? reportData.infraProjects : undefined} />
@@ -218,7 +380,7 @@ export default function ReportBuilder() {
               <SectorSection summaries={hasSectors ? sectorSummaries : undefined} />
             )}
             {meta.key === 'outlook' && (
-              <div className="rounded-xl bg-slate-800/30 border border-slate-700 p-5 space-y-3">
+              <div className="rounded-xl bg-[#0a1628] border border-[#1a2744] p-5 space-y-3">
                 {dashboardStats ? (
                   <div className="grid grid-cols-2 gap-3">
                     {[
@@ -236,7 +398,7 @@ export default function ReportBuilder() {
                 ) : (
                   <p className="text-xs text-slate-500 italic leading-relaxed">
                     Run the AI search in Data Ingestion to populate macro context for this section.
-                    Key themes to cover: infrastructure pipeline readiness, FDI diversification,
+                    Key themes: infrastructure pipeline readiness, FDI diversification,
                     geopolitical positioning (US–IDN, Singapore corridor), competitive landscape vs
                     Johor &amp; Vietnam, and tenant risk signals for H2 2026.
                   </p>

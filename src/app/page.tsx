@@ -46,50 +46,76 @@ export default function Dashboard() {
   const hasData = data !== null;
   const hasStats = dashboardStats !== null;
 
+  // Determine data source pill label + color
+  const sourcePill =
+    dashboardStats?.dataSource === 'upload'
+      ? { label: 'Uploaded', cls: 'bg-blue-500/15 text-blue-300 border border-blue-500/25' }
+      : dashboardStats?.dataSource === 'genspark'
+        ? { label: 'AI Search', cls: 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/25' }
+        : null;
+
   return (
     <div className="space-y-6">
 
-      {/* 1. Macro Indicator Grid */}
-      <MacroIndicatorGrid data={macroGrid.length > 0 ? macroGrid : undefined} />
+      {/* 1. Key Metric Cards — KPIs at top for quick scanning */}
+      <div>
+        {/* Title row with optional source pill */}
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+            Key Performance Indicators
+          </h2>
+          {sourcePill && (
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${sourcePill.cls}`}>
+              {sourcePill.label}
+            </span>
+          )}
+        </div>
 
-      {/* 2. Key Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <MetricCard
-          title="GDP Growth"
-          value={gdpValue ?? '—'}
-          change={gdpChange}
-          isPositive={gdpChange ? !gdpChange.startsWith('-') : true}
-          empty={!gdpValue}
-        />
-        <MetricCard
-          title="FDI Inflow"
-          value={fdiValue ?? '—'}
-          change={fdiChange}
-          isPositive={fdiChange ? !fdiChange.startsWith('-') : true}
-          empty={!fdiValue}
-        />
-        <MetricCard
-          title="Inflation Rate"
-          value={inflationValue ?? '—'}
-          change={inflationChange}
-          isPositive={inflationChange ? inflationChange.startsWith('-') : true}
-          empty={!inflationValue}
-        />
-        <MetricCard
-          title="Active Projects"
-          value={totalProjects != null ? String(totalProjects) : '—'}
-          change={null}
-          isPositive={true}
-          empty={totalProjects === null}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <MetricCard
+            title="GDP Growth"
+            value={gdpValue ?? '—'}
+            change={gdpChange}
+            isPositive={gdpChange ? !gdpChange.startsWith('-') : true}
+            empty={!gdpValue}
+            accent="border-l-indigo-500"
+          />
+          <MetricCard
+            title="FDI Inflow"
+            value={fdiValue ?? '—'}
+            change={fdiChange}
+            isPositive={fdiChange ? !fdiChange.startsWith('-') : true}
+            empty={!fdiValue}
+            accent="border-l-blue-500"
+          />
+          <MetricCard
+            title="Inflation Rate"
+            value={inflationValue ?? '—'}
+            change={inflationChange}
+            isPositive={inflationChange ? inflationChange.startsWith('-') : true}
+            empty={!inflationValue}
+            accent="border-l-emerald-500"
+          />
+          <MetricCard
+            title="Active Projects"
+            value={totalProjects != null ? String(totalProjects) : '—'}
+            change={null}
+            isPositive={true}
+            empty={totalProjects === null}
+            accent="border-l-violet-500"
+          />
+        </div>
       </div>
+
+      {/* 2. Macro Indicator Grid */}
+      <MacroIndicatorGrid data={macroGrid.length > 0 ? macroGrid : undefined} />
 
       {/* 3. Historical GDP Chart */}
       <GDPHistoricalChart />
 
       {/* 4. Quarterly Charts — require data upload / ingest */}
       {!hasData ? (
-        <div className="bg-slate-900/50 border border-dashed border-slate-700 rounded-xl p-10 flex flex-col items-center justify-center gap-4">
+        <div className="bg-[#0c1425] border border-dashed border-[#1a2744] rounded-xl p-10 flex flex-col items-center justify-center gap-4">
           <Database size={36} className="text-slate-600" />
           <div className="text-center">
             <p className="text-slate-300 font-semibold">No data yet — run the AI search or upload a file</p>
@@ -108,11 +134,11 @@ export default function Dashboard() {
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* GDP Growth vs Target */}
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 backdrop-blur-sm">
+            <div className="bg-[#0c1425] border border-[#1a2744] rounded-xl p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-slate-200">GDP Growth vs Target (%)</h3>
                 {hasStats && (
-                  <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">
+                  <span className="text-xs text-slate-500 bg-[#111d35] px-2 py-1 rounded border border-[#1a2744]">
                     Last refreshed {new Date(dashboardStats!.lastUpdated).toLocaleDateString()}
                   </span>
                 )}
@@ -120,11 +146,11 @@ export default function Dashboard() {
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data.gdpData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1a2744" vertical={false} />
                     <XAxis dataKey="year" stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
                     <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
                     <Tooltip
-                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
+                      contentStyle={{ backgroundColor: '#0c1425', borderColor: '#1a2744', borderRadius: '8px' }}
                       itemStyle={{ color: '#e2e8f0' }}
                     />
                     <Legend />
@@ -136,17 +162,17 @@ export default function Dashboard() {
             </div>
 
             {/* Investment Inflows */}
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 backdrop-blur-sm">
+            <div className="bg-[#0c1425] border border-[#1a2744] rounded-xl p-6">
               <h3 className="text-lg font-semibold text-slate-200 mb-6">Investment Inflows (USD M)</h3>
               <div className="h-[300px]">
                 {data.investmentData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={data.investmentData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1a2744" vertical={false} />
                       <XAxis dataKey="quarter" stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
                       <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
                       <Tooltip
-                        contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
+                        contentStyle={{ backgroundColor: '#0c1425', borderColor: '#1a2744', borderRadius: '8px' }}
                         itemStyle={{ color: '#e2e8f0' }}
                       />
                       <Legend />
@@ -163,18 +189,18 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Inflation */}
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 backdrop-blur-sm">
+            <div className="bg-[#0c1425] border border-[#1a2744] rounded-xl p-6">
               <h3 className="text-lg font-semibold text-slate-200 mb-6">Monthly Inflation Rate (%)</h3>
               <div className="h-[300px]">
                 {data.inflationData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data.inflationData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }} barSize={32}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1a2744" vertical={false} />
                       <XAxis dataKey="month" stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
                       <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} axisLine={false} tickLine={false} />
                       <Tooltip
-                        cursor={{ fill: '#1e293b' }}
-                        contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
+                        cursor={{ fill: '#111d35' }}
+                        contentStyle={{ backgroundColor: '#0c1425', borderColor: '#1a2744', borderRadius: '8px' }}
                       />
                       <Bar dataKey="rate" name="Inflation" fill="#10b981" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -185,21 +211,40 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* AI Storyline */}
-            <div className="bg-gradient-to-br from-indigo-900/20 to-blue-900/20 border border-indigo-500/20 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+            {/* AI Synthesis */}
+            <div
+              className="bg-[#0a1628] border border-indigo-500/25 rounded-xl p-6 relative overflow-hidden"
+              style={{
+                backgroundImage:
+                  'radial-gradient(ellipse at 80% 0%, rgba(99,102,241,0.07) 0%, transparent 60%), ' +
+                  'linear-gradient(to bottom right, rgba(99,102,241,0.04) 0%, transparent 100%)',
+              }}
+            >
+              {/* Subtle panel grid overlay */}
+              <div
+                className="absolute inset-0 pointer-events-none select-none opacity-[0.03]"
+                style={{
+                  backgroundImage:
+                    'repeating-linear-gradient(0deg, #6366f1 0px, transparent 1px, transparent 32px), ' +
+                    'repeating-linear-gradient(90deg, #6366f1 0px, transparent 1px, transparent 32px)',
+                }}
+              />
+
+              {/* Decorative icon */}
               <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none select-none">
                 <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-indigo-300 mb-4">AI Synthesis</h3>
+
+              <h3 className="text-lg font-semibold text-indigo-300 mb-4 glow-indigo relative z-10">AI Synthesis</h3>
               <div className="space-y-4 text-slate-300 text-sm leading-relaxed relative z-10">
                 <p>
                   {data.summary ||
                     'Batam continues to demonstrate robust economic resilience. Run an AI search to get a live synthesis of Q2 2026 conditions.'}
                 </p>
               </div>
-              <div className="mt-6">
+              <div className="mt-6 relative z-10">
                 <Link
                   href="/report-builder"
                   className="text-xs font-medium text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
@@ -213,13 +258,13 @@ export default function Dashboard() {
       )}
 
       {/* News Feed */}
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+      <div className="bg-[#0c1425] border border-[#1a2744] rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a2744]">
           <div className="flex items-center gap-2">
             <Newspaper size={16} className="text-indigo-400" />
             <h3 className="text-base font-semibold text-slate-200">Batam FTZ News</h3>
             {newsItems.length > 0 && (
-              <span className="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">
+              <span className="text-xs bg-[#111d35] text-slate-400 px-2 py-0.5 rounded-full border border-[#1a2744]">
                 {newsItems.length}
               </span>
             )}
@@ -244,7 +289,7 @@ export default function Dashboard() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-px bg-slate-800/30">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-px bg-[#1a2744]/40">
             {newsItems.slice(0, 6).map((item) => (
               <NewsCard key={item.id} item={item} />
             ))}
@@ -266,7 +311,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 function NewsCard({ item }: { item: NewsItem }) {
   return (
-    <div className="bg-slate-900/50 p-4 hover:bg-slate-800/30 transition-colors">
+    <div className="bg-[#0c1425] p-4 hover:bg-[#111d35] transition-colors">
       <div className="flex items-center gap-2 mb-2">
         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[item.category] ?? 'bg-slate-700 text-slate-300'}`}>
           {item.category}
@@ -284,35 +329,71 @@ function NewsCard({ item }: { item: NewsItem }) {
   );
 }
 
+// Accent border colors per metric — border-l-4 + the accent colour class
+const ACCENT_LEFT: Record<string, string> = {
+  'border-l-indigo-500':  'border-l-indigo-500',
+  'border-l-blue-500':    'border-l-blue-500',
+  'border-l-emerald-500': 'border-l-emerald-500',
+  'border-l-violet-500':  'border-l-violet-500',
+};
+
 function MetricCard({
   title,
   value,
   change,
   isPositive,
   empty,
+  accent,
 }: {
   title: string;
   value: string;
   change: string | null;
   isPositive: boolean;
   empty?: boolean;
+  accent: string;
 }) {
   return (
-    <div className={`bg-slate-900/50 border rounded-xl p-5 backdrop-blur-sm flex flex-col justify-between group transition-colors ${empty ? 'border-slate-800/50' : 'border-slate-800 hover:border-slate-700'}`}>
-      <h4 className="text-slate-400 font-medium text-xs uppercase tracking-wider mb-2">{title}</h4>
+    <div
+      className={[
+        'bg-[#0c1425] border border-[#1a2744] rounded-xl p-5',
+        'border-l-4',
+        ACCENT_LEFT[accent] ?? accent,
+        'card-hover',
+        'flex flex-col justify-between',
+      ].join(' ')}
+    >
+      <h4 className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">
+        {title}
+      </h4>
+
       <div className="flex items-end gap-2">
-        <span className={`text-3xl font-bold ${empty ? 'text-slate-600' : 'text-slate-100'}`}>
-          {value}
+        <span
+          className={[
+            'stat-number text-3xl font-black',
+            empty ? 'text-slate-600' : 'text-slate-100',
+          ].join(' ')}
+        >
+          {empty ? '—' : value}
         </span>
-        {change && (
-          <span className={`text-sm font-medium mb-0.5 flex items-center gap-0.5 ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+        {!empty && change && (
+          <span
+            className={[
+              'text-sm font-medium mb-0.5 flex items-center gap-0.5',
+              isPositive ? 'text-emerald-400' : 'text-rose-400',
+            ].join(' ')}
+          >
             {isPositive ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
             {change}
           </span>
         )}
       </div>
+
       {empty && (
-        <p className="text-xs text-slate-600 mt-3">Ingest data to populate</p>
+        <p className="text-xs text-slate-600 mt-3">
+          <Link href="/ingestion" className="hover:text-slate-400 transition-colors underline underline-offset-2">
+            Ingest data to populate
+          </Link>
+        </p>
       )}
     </div>
   );

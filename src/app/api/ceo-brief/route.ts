@@ -31,75 +31,75 @@ export async function POST(request: Request) {
     }
   }
 
-  const prompt = `You are a senior strategy consultant preparing a CEO-level briefing for Batam Free Trade Zone stakeholders.
-${context ? `\nCurrent economic data context:\n${context}\n` : ''}
-${focus ? `\nUser's focus areas: ${focus}\n` : ''}
-${file ? `\nThe user has uploaded an existing quarterly report (attached). Use it as your primary reference for facts, figures, and tone.` : ''}
+  const prompt = `You are a senior strategy consultant helping prepare the storyline and narrative arc for Batam FTZ's Q3 2026 economic report. Based on the Q2 2026 data provided, recommend what stories to tell, what angles to lead with, and what talking points will resonate with CEO and investor audiences next quarter.
+${context ? `\nQ2 2026 economic data context:\n${context}\n` : ''}
+${focus ? `\nStrategic priorities to emphasise: ${focus}\n` : ''}
+${file ? `\nThe user has uploaded an existing Q2 report (attached). Use it as your primary reference for facts, figures, and trends going into Q3.` : ''}
 
-Generate a comprehensive CEO Brief in the following markdown structure. Be specific, use actual Batam FTZ data, and write in a crisp executive style.
+Generate a forward-looking Q3 Storyline Plan in the following markdown structure. Be specific about what to SAY next quarter based on Q2 data trends, and write in a crisp executive style.
 
 ---
 
-# CEO Brief — Batam FTZ Q2 2026
+# Q3 2026 Storyline Plan — Batam FTZ
 
-## Executive Summary
-[5–7 concise bullet points capturing the most important findings and their strategic implications]
+## Q3 Narrative Priorities
+[5–7 concise bullet points on what the CEO should emphasise NEXT quarter — the strategic stories, angles, and themes that will resonate most with CEO and investor audiences in Q3]
 
-## Recommended Narrative Arc
-[Describe the overarching story: what is the headline message, what supporting evidence underpins it, and what call-to-action follows]
+## Q3 Story Arc
+[Describe the overarching message for the upcoming Q3 report: what is the headline narrative, what Q2 evidence supports it, and what forward-looking call-to-action it leads to]
 
 ### Chapter 1: Macroeconomic Foundation
-**Angle:** [One-line framing]
-**Key message:** [2-3 sentences]
+**Angle:** [One-line framing for Q3]
+**Key message:** [2-3 sentences on what to say about the macro foundation going into Q3]
 **Talking points:**
 - [point 1]
 - [point 2]
 - [point 3]
 
 ### Chapter 2: Infrastructure & Policy Enablers
-**Angle:** [One-line framing]
-**Key message:** [2-3 sentences]
+**Angle:** [One-line framing for Q3]
+**Key message:** [2-3 sentences on what to say about infrastructure and policy momentum]
 **Talking points:**
 - [point 1]
 - [point 2]
 - [point 3]
 
 ### Chapter 3: Geopolitical Tailwinds
-**Angle:** [One-line framing]
-**Key message:** [2-3 sentences]
+**Angle:** [One-line framing for Q3]
+**Key message:** [2-3 sentences on what geopolitical angles to lead with in Q3]
 **Talking points:**
 - [point 1]
 - [point 2]
 - [point 3]
 
 ### Chapter 4: Sector Momentum
-**Angle:** [One-line framing]
-**Key message:** [2-3 sentences]
+**Angle:** [One-line framing for Q3]
+**Key message:** [2-3 sentences on which sectors to spotlight and why]
 **Talking points:**
 - [point 1]
 - [point 2]
 - [point 3]
 
-### Chapter 5: Forward Outlook & Risks
-**Angle:** [One-line framing]
-**Key message:** [2-3 sentences]
+### Chapter 5: H2 2026 Setup
+**Angle:** [One-line framing for positioning into the second half of 2026]
+**Key message:** [2-3 sentences on how to position Batam FTZ for H2 2026 based on Q2 momentum]
 **Talking points:**
 - [point 1]
 - [point 2]
 - [point 3]
 
 ## Strategic Messaging Framework
-[3–5 overarching messages that should appear consistently across all materials]
+[3–5 overarching messages that should appear consistently across all Q3 materials]
 
 ## Suggested Opening (for presentation/speech)
-[2–3 sentence hook that grabs a CEO audience's attention]
+[2–3 sentence hook that grabs a CEO audience's attention going into Q3]
 
 ## Suggested Closing
-[2–3 sentences that leave the audience with a clear call to action]
+[2–3 sentences that leave the audience with a clear call to action for Q3 and beyond]
 
 ---
 
-Write with authority. Use data where available. Every chapter should connect back to the central narrative.`;
+Write with authority. Use Q2 data trends to justify every Q3 recommendation. Every chapter should connect back to the central Q3 narrative arc.`;
 
   contentBlocks.push({ type: 'text', text: prompt });
 
