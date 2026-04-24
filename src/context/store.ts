@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export interface EconomicData {
   gdpData: { year: string; gdp: number; target: number }[];
@@ -13,8 +14,13 @@ interface DataStore {
   clearData: () => void;
 }
 
-export const useDataStore = create<DataStore>((set) => ({
-  data: null,
-  setData: (data) => set({ data }),
-  clearData: () => set({ data: null }),
-}));
+export const useDataStore = create<DataStore>()(
+  persist(
+    (set) => ({
+      data: null,
+      setData: (data) => set({ data }),
+      clearData: () => set({ data: null }),
+    }),
+    { name: 'batam-economic-data' }
+  )
+);

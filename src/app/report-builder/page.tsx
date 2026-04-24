@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Sparkles, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePDF } from 'react-to-pdf';
 import { useDataStore } from '@/context/store';
 import InfraSection from '@/components/sections/InfraSection';
 import GeoSection from '@/components/sections/GeoSection';
 import SectorSection from '@/components/sections/SectorSection';
+import ReportPDFContent from '@/components/pdf/ReportPDFContent';
 
 type SectionKey = 'infra' | 'geo' | 'sector' | 'outlook';
 
@@ -153,6 +154,11 @@ export default function ReportBuilder() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+      {/* Hidden PDF target — white/print-ready layout captured by react-to-pdf */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }} ref={targetRef}>
+        <ReportPDFContent narratives={narratives} period="Q2 2026" />
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -170,8 +176,8 @@ export default function ReportBuilder() {
         </button>
       </div>
 
-      {/* Report sections (wrapped in PDF ref) */}
-      <div ref={targetRef} className="space-y-4">
+      {/* Visible report sections */}
+      <div className="space-y-4">
         {SECTION_META.map((meta) => (
           <SectionWrapper
             key={meta.key}
@@ -199,3 +205,4 @@ export default function ReportBuilder() {
     </div>
   );
 }
+

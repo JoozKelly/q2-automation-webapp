@@ -1,7 +1,8 @@
 'use client';
 
 import { create } from 'zustand';
-import type { ReportData, ReportNarratives, ParsedWorkbook, GDPDataPoint } from '@/types/report';
+import { persist } from 'zustand/middleware';
+import type { ReportData, ReportNarratives, GDPDataPoint } from '@/types/report';
 
 const DEFAULT_REPORT: ReportData = {
   period: 'Q2 2026',
@@ -15,39 +16,48 @@ const DEFAULT_REPORT: ReportData = {
 
 interface ReportStore {
   data: ReportData;
-  rawWorkbook: ParsedWorkbook;
-  isLoading: boolean;
   uploadedFileName: string | null;
+  isLoading: boolean;
 
   setGDPHistorical: (points: GDPDataPoint[]) => void;
-  setRawWorkbook: (wb: ParsedWorkbook, fileName: string) => void;
+  setRawWorkbook: (wb: Record<string, unknown[]>, fileName: string) => void;
   updateNarrative: (section: keyof ReportNarratives, text: string) => void;
   setLoading: (loading: boolean) => void;
   reset: () => void;
 }
 
-export const useReportStore = create<ReportStore>((set) => ({
-  data: DEFAULT_REPORT,
-  rawWorkbook: {},
-  isLoading: false,
-  uploadedFileName: null,
+export const useReportStore = create<ReportStore>()(
+  persist(
+    (set) => ({
+      data: DEFAULT_REPORT,
+      uploadedFileName: null,
+      isLoading: false,
 
-  setGDPHistorical: (points) =>
-    set((state) => ({ data: { ...state.data, gdpHistorical: points } })),
+      setGDPHistorical: (points) =>
+        set((state) => ({ data: { ...state.data, gdpHistorical: points } })),
 
-  setRawWorkbook: (wb, fileName) =>
-    set({ rawWorkbook: wb, uploadedFileName: fileName }),
+      setRawWorkbook: (_wb, fileName) =>
+        set({ uploadedFileName: fileName }),
 
-  updateNarrative: (section, text) =>
-    set((state) => ({
-      data: {
-        ...state.data,
-        narratives: { ...state.data.narratives, [section]: text },
-      },
-    })),
+      updateNarrative: (section, text) =>
+        set((state) => ({
+          data: {
+            ...state.data,
+            narratives: { ...state.data.narratives, [section]: text },
+          },
+        })),
 
-  setLoading: (loading) => set({ isLoading: loading }),
+      setLoading: (loading) => set({ isLoading: loading }),
 
-  reset: () =>
-    set({ data: DEFAULT_REPORT, rawWorkbook: {}, uploadedFileName: null }),
-}));
+      reset: () => set({ data: DEFAULT_REPORT, uploadedFileName: null }),
+    }),
+    {
+      name: 'batam-report-store',
+      // Only persist what we need; skip large rawWorkbook
+      partialize: (state) => ({
+        data: { ...state.data },
+        uploadedFileName: state.uploadedFileName,
+      }),
+    }
+  )
+);
