@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import { useDataStore, EconomicData } from '@/context/store';
 import { useReportStore } from '@/store/reportStore';
-import { Database, TrendingUp, TrendingDown, Newspaper, ChevronRight, Sparkles, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Database, TrendingUp, TrendingDown, Newspaper, ChevronRight, Sparkles, RefreshCw, AlertTriangle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import MacroIndicatorGrid from '@/components/charts/MacroIndicatorGrid';
 import GDPHistoricalChart from '@/components/charts/GDPHistoricalChart';
@@ -380,6 +380,17 @@ export default function Dashboard() {
                 <h4 className="text-lg font-bold text-slate-100 leading-snug mb-2">{newsItems[0].title}</h4>
                 <p className="text-sm text-slate-400 leading-relaxed mb-3">{newsItems[0].summary}</p>
                 <p className="text-xs text-slate-600">{newsItems[0].source}</p>
+                {newsItems[0].sourceUrl && (
+                  <a
+                    href={newsItems[0].sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[10px] text-sky-400 hover:text-sky-300 transition-colors mt-1"
+                  >
+                    <ExternalLink size={10} />
+                    View source
+                  </a>
+                )}
               </div>
             </div>
 
@@ -413,6 +424,17 @@ export default function Dashboard() {
                       <h4 className="text-sm font-semibold text-slate-100 leading-snug mb-1">{item.title}</h4>
                       <p className="text-xs text-slate-400 leading-relaxed mb-2 line-clamp-2">{item.summary}</p>
                       <p className="text-xs text-slate-600">{item.source} · {item.date}</p>
+                      {item.sourceUrl && (
+                        <a
+                          href={item.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] text-sky-400 hover:text-sky-300 transition-colors mt-1"
+                        >
+                          <ExternalLink size={10} />
+                          View source
+                        </a>
+                      )}
                     </div>
                   </div>
                 ))}

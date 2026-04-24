@@ -49,22 +49,22 @@ export default function Header() {
       <header
         className="h-16 flex items-center justify-between px-8 sticky top-0 z-10 shrink-0"
         style={{
-          background: 'rgba(6, 14, 30, 0.85)',
+          background: 'rgba(4, 17, 31, 0.85)',
           backdropFilter: 'blur(16px)',
-          borderBottom: '1px solid rgba(30, 58, 95, 0.45)',
+          borderBottom: '1px solid rgba(14, 165, 233, 0.12)',
         }}
       >
         {/* Left: page title */}
         <div className="flex items-center gap-4 min-w-0">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-slate-100 leading-tight truncate">{meta.title}</h2>
-            <p className="text-[11px] text-[#4a5e78] leading-tight hidden sm:block truncate">{meta.subtitle}</p>
+            <p className="text-[11px] text-[#3a5268] leading-tight hidden sm:block truncate">{meta.subtitle}</p>
           </div>
 
           {activeSession && (
             <div
-              className="hidden md:flex items-center gap-1.5 text-indigo-300 text-[11px] px-2.5 py-1 rounded-full shrink-0"
-              style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}
+              className="hidden md:flex items-center gap-1.5 text-sky-300 text-[11px] px-2.5 py-1 rounded-full shrink-0"
+              style={{ background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.2)' }}
             >
               <FolderOpen size={11} />
               <span className="font-medium truncate max-w-[120px]">{activeSession.name}</span>
@@ -75,7 +75,7 @@ export default function Header() {
         {/* Right: metadata + save */}
         <div className="flex items-center gap-3 shrink-0">
           {lastUpdated && (
-            <div className="hidden lg:flex items-center gap-1.5 text-[11px] text-[#4a5e78]">
+            <div className="hidden lg:flex items-center gap-1.5 text-[11px] text-[#3a5268]">
               <Clock size={11} />
               <span>
                 {new Date(lastUpdated).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
@@ -113,7 +113,7 @@ export default function Header() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-bold text-slate-100 mb-1">Save Session</h3>
-            <p className="text-xs text-[#4a5e78] mb-5">
+            <p className="text-xs text-[#3a5268] mb-5">
               Name this session to save all dashboard data and narratives for later.
             </p>
             <input
@@ -122,8 +122,8 @@ export default function Header() {
               onChange={(e) => setSessionName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
               placeholder={`e.g. Q2 2026 Draft — ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
-              className="w-full text-sm text-slate-200 placeholder-[#2a3a52] px-4 py-2.5 rounded-xl mb-4 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              style={{ background: '#060e1e', border: '1px solid rgba(30,58,95,0.7)' }}
+              className="w-full text-sm text-slate-200 placeholder-[#2a3a52] px-4 py-2.5 rounded-xl mb-4 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              style={{ background: '#04111f', border: '1px solid rgba(14,165,233,0.15)' }}
             />
             <div className="flex gap-2">
               <button
@@ -131,9 +131,9 @@ export default function Header() {
                 disabled={!sessionName.trim()}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
                 style={{
-                  background: sessionName.trim() ? '#6366f1' : 'rgba(99,102,241,0.1)',
-                  color: sessionName.trim() ? '#fff' : '#4a5e78',
-                  boxShadow: sessionName.trim() ? '0 0 24px rgba(99,102,241,0.4)' : 'none',
+                  background: sessionName.trim() ? '#0ea5e9' : 'rgba(14,165,233,0.1)',
+                  color: sessionName.trim() ? '#fff' : '#3a5268',
+                  boxShadow: sessionName.trim() ? '0 0 24px rgba(14,165,233,0.4)' : 'none',
                 }}
               >
                 Save

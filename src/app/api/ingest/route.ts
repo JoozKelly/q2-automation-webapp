@@ -67,10 +67,10 @@ function repairAndParse(raw: string): unknown {
 
 // ── Prompt ────────────────────────────────────────────────────────────────────
 
-function buildPrompt(query: string, rawData: string): string {
+function buildPrompt(query: string, rawData: string, period = '2024-2026'): string {
   const now = new Date().toISOString();
   return `You are a senior economic analyst specialising in Indonesia's Batam Free Trade Zone (FTZ).
-Today's date is April 2026. Reporting period: Q2 2026 (April–June 2026).
+Today's date is April 2026. Reporting period: Q2 2026 (April–June 2026). Historical data requested: ${period}.
 ${rawData ? `\nLive web data for "${query}":\n${rawData.slice(0, 5000)}\n` : ''}
 Generate a complete economic intelligence payload for Batam FTZ Q2 2026.
 
@@ -165,6 +165,7 @@ Schema (replace every <...> placeholder with actual values):
       "title":"US–Indonesia Trade Framework Signed",
       "description":"The US and Indonesia formalised a bilateral trade framework covering critical minerals, semiconductors, and clean energy. Batam FTZ is positioned as a priority manufacturing hub under the agreement.",
       "source":"Reuters, March 2026",
+      "sourceUrl":"https://www.reuters.com/...",
       "impact":{"fdi":"improving","gdp":"improving","tenantRisk":"neutral"}
     },
     {
@@ -172,6 +173,7 @@ Schema (replace every <...> placeholder with actual values):
       "title":"Singapore Carbon-Neutral Industrial Park MOU",
       "description":"Sembcorp Industries signed an MOU with BP Batam to develop a 500-hectare carbon-neutral industrial park in Batam's west zone. The park targets solar, BESS and data centre tenants.",
       "source":"Business Times, February 2026",
+      "sourceUrl":"https://www.reuters.com/...",
       "impact":{"fdi":"improving","gdp":"improving","tenantRisk":"neutral"}
     },
     {
@@ -179,6 +181,7 @@ Schema (replace every <...> placeholder with actual values):
       "title":"Johor–Singapore Special Economic Zone Competes for EMS Investment",
       "description":"Malaysia's Johor–Singapore SEZ launched new tax incentives for electronics manufacturers, putting competitive pressure on Batam for EMS relocations. Analysts note Batam retains labour cost advantage.",
       "source":"Straits Times, January 2026",
+      "sourceUrl":"https://www.reuters.com/...",
       "impact":{"fdi":"declining","gdp":"stable","tenantRisk":"risk"}
     },
     {
@@ -186,6 +189,7 @@ Schema (replace every <...> placeholder with actual values):
       "title":"Indonesia Raises Domestic Content Requirements for Solar Panels",
       "description":"New regulations require 40% domestic content in solar panel supply chains by 2027. Batam-based solar manufacturers are expanding local cell production to comply.",
       "source":"Jakarta Post, April 2026",
+      "sourceUrl":"https://www.reuters.com/...",
       "impact":{"fdi":"stable","gdp":"improving","tenantRisk":"neutral"}
     },
     {
@@ -193,6 +197,7 @@ Schema (replace every <...> placeholder with actual values):
       "title":"BP Batam Reports Record Q1 2026 Investment Intake",
       "description":"BP Batam recorded USD 205M in new investment commitments in Q1 2026, a 12% year-on-year increase led by data centre and BESS project announcements.",
       "source":"BP Batam Press Release, April 2026",
+      "sourceUrl":"https://www.reuters.com/...",
       "impact":{"fdi":"improving","gdp":"improving","tenantRisk":"neutral"}
     }
   ],
@@ -205,7 +210,11 @@ Schema (replace every <...> placeholder with actual values):
     {"sector":"E-Cigarettes","radarLabel":"E-Cig","projectCount":4,"highlight":"RLX, SMOORE exports to EU market"}
   ],
   "summary": "Batam FTZ continues to attract diversified foreign investment in Q2 2026, with particular momentum in data centres and BESS driven by regional digital infrastructure demand. Infrastructure improvements and the US–Indonesia trade framework are reinforcing Batam's competitive positioning despite pressure from Malaysia's Johor SEZ."
-}`;
+}
+
+gdpData: extend to cover ${period}.
+gdpHistorical: cover the full requested range ${period}.
+geoEvents sourceUrl: the direct article URL from web data if available, or a plausible search URL.`;
 }
 
 // ── BPS queries (tried sequentially until one returns data) ───────────────────
@@ -230,6 +239,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const queryParam = body.query as string | undefined;
   const useBPS = body.bps === true;
+  const period = (body.period as string | undefined) ?? '2024-2026';
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -287,7 +297,7 @@ export async function POST(request: Request) {
           const message = await client.messages.create({
             model: 'claude-sonnet-4-6',
             max_tokens: 6000,
-            messages: [{ role: 'user', content: buildPrompt(queryParam ?? queries[0], gensparkRaw) }],
+            messages: [{ role: 'user', content: buildPrompt(queryParam ?? queries[0], gensparkRaw, period) }],
           });
 
           const raw = message.content[0].type === 'text' ? message.content[0].text : '';

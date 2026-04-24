@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   UploadCloud, FileText, FileSpreadsheet, Image, X,
   Sparkles, Newspaper, CheckCircle2, AlertCircle, Terminal,
-  Download, RefreshCw, Database, ChevronRight, Eye,
+  Download, RefreshCw, Database, ChevronRight, Eye, ExternalLink,
 } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import { useDataStore, EconomicData } from '@/context/store';
 import { useReportStore } from '@/store/reportStore';
+import { useUIStateStore } from '@/store/uiStateStore';
 import type {
   DashboardStats, GDPDataPoint, InfraProject, GeoEvent,
   SectorSummary, MacroGridGroup, NewsItem,
@@ -246,7 +247,11 @@ function SelectionPanel({
 // ─── Page ──────────────────────────────────────────────────────────────────
 
 export default function DataIngestion() {
-  const [activeTab, setActiveTab] = useState<'documents' | 'news' | 'bps'>('documents');
+  const { ingestionTab, ingestionQuery, ingestionPeriod, setIngestionTab, setIngestionQuery, setIngestionPeriod } = useUIStateStore();
+  const activeTab = useMemo(() => ingestionTab === 'upload' ? 'documents' : ingestionTab, [ingestionTab]) as 'documents' | 'news' | 'bps';
+  const setActiveTab = useCallback((tab: 'documents' | 'news' | 'bps') => {
+    setIngestionTab(tab === 'documents' ? 'upload' : tab);
+  }, [setIngestionTab]);
 
   // Document analysis state
   const [files, setFiles] = useState<FileEntry[]>([]);
@@ -383,7 +388,7 @@ export default function DataIngestion() {
       const res = await fetch('/api/ingest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bps: true }),
+        body: JSON.stringify({ query: ingestionQuery || undefined, bps: true, period: ingestionPeriod }),
       });
       if (!res.body) throw new Error('No response body');
 
@@ -473,6 +478,13 @@ export default function DataIngestion() {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data.inflationData), 'Inflation');
     XLSX.writeFile(wb, 'Batam_Economic_Data.xlsx');
   };
+
+  const PERIODS = [
+    { label: '2020 – 2026 (Full history)', value: '2020-2026' },
+    { label: '2022 – 2026', value: '2022-2026' },
+    { label: '2024 – 2026 (Recent)', value: '2024-2026' },
+    { label: '2025 – 2026 (Latest)', value: '2025-2026' },
+  ];
 
   const TABS = [
     { id: 'documents' as const, label: 'Document Analysis', icon: '📄' },
@@ -663,6 +675,19 @@ export default function DataIngestion() {
               ))}
             </div>
 
+            <div className="space-y-1">
+              <label className="text-xs text-slate-400">Historical period</label>
+              <select
+                value={ingestionPeriod}
+                onChange={(e) => setIngestionPeriod(e.target.value)}
+                className="w-full text-sm text-slate-200 bg-[#04111f] border border-[#1a3050] rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              >
+                {PERIODS.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+            </div>
+
             <button
               onClick={handleBPSSearch}
               disabled={bpsSearching}
@@ -816,6 +841,17 @@ export default function DataIngestion() {
                   <h4 className="text-xl font-bold text-slate-100 leading-snug mb-3">{newsItems[0].title}</h4>
                   <p className="text-sm text-slate-400 leading-relaxed mb-4">{newsItems[0].summary}</p>
                   <p className="text-xs text-slate-600">{newsItems[0].source} · {newsItems[0].date}</p>
+                  {newsItems[0].sourceUrl && (
+                    <a
+                      href={newsItems[0].sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[10px] text-sky-400 hover:text-sky-300 transition-colors"
+                    >
+                      <ExternalLink size={10} />
+                      View source
+                    </a>
+                  )}
                 </div>
               </div>
 
@@ -848,6 +884,17 @@ export default function DataIngestion() {
                         <h4 className="text-sm font-semibold text-slate-100 leading-snug mb-1">{item.title}</h4>
                         <p className="text-xs text-slate-400 leading-relaxed mb-2 line-clamp-2">{item.summary}</p>
                         <p className="text-xs text-slate-600">{item.source} · {item.date}</p>
+                        {item.sourceUrl && (
+                          <a
+                            href={item.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[10px] text-sky-400 hover:text-sky-300 transition-colors"
+                          >
+                            <ExternalLink size={10} />
+                            View source
+                          </a>
+                        )}
                       </div>
                     </div>
                   ))}

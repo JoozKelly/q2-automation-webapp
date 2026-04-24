@@ -8,6 +8,7 @@ import {
 import Link from 'next/link';
 import { useReportStore } from '@/store/reportStore';
 import { useDataStore } from '@/context/store';
+import { useUIStateStore } from '@/store/uiStateStore';
 
 function MarkdownSection({ text }: { text: string }) {
   return (
@@ -60,7 +61,7 @@ const CHAPTER_PILLS = [
 
 export default function CEOBriefPage() {
   const [reportFile, setReportFile] = useState<File | null>(null);
-  const [prevReportText, setPrevReportText] = useState('');
+  const { prevReportText, setPrevReportText } = useUIStateStore();
   const [focus, setFocus] = useState('');
   const [generating, setGenerating] = useState(false);
   const [briefText, setBriefText] = useState('');

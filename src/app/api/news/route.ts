@@ -95,7 +95,8 @@ Return exactly this structure (imageSearchTerm should be 2–3 keywords for find
     "date": "March 2026",
     "category": "policy",
     "relevance": "high",
-    "imageSearchTerm": "trade agreement handshake"
+    "imageSearchTerm": "trade agreement handshake",
+    "sourceUrl": "https://www.reuters.com/world/asia-pacific/..."
   },
   {
     "id": "2",
@@ -172,7 +173,8 @@ Return exactly this structure (imageSearchTerm should be 2–3 keywords for find
 Use the web data above where available; fill gaps from your knowledge.
 Category must be one of: fdi, infrastructure, policy, sector, geopolitics, economy
 Relevance must be one of: high, medium, low
-imageSearchTerm: 2-3 keywords describing a relevant photo for the article (e.g. "solar panels factory", "data center servers")`;
+imageSearchTerm: 2-3 keywords describing a relevant photo for the article (e.g. "solar panels factory", "data center servers")
+sourceUrl: direct URL to the article from web search results; if unavailable, construct a realistic search URL like https://www.reuters.com/search/news/?query=Batam+FTZ`;
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────

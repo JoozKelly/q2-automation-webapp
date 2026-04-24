@@ -38,6 +38,7 @@ export interface GeoEvent {
   title: string;
   description: string;
   source?: string;
+  sourceUrl?: string;
   impact: GeoEventImpact;
 }
 
@@ -145,4 +146,5 @@ export interface NewsItem {
   category: NewsCategory;
   relevance: NewsRelevance;
   imageUrl?: string;
+  sourceUrl?: string;
 }
