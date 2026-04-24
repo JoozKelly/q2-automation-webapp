@@ -30,7 +30,9 @@ interface FullPayload {
   geoEvents?: GeoEvent[];
   macroGrid?: MacroGridGroup[];
   sectorSummaries?: SectorSummary[];
+  newsItems?: NewsItem[];
   dashboardStats?: DashboardStats;
+  summary?: string;
 }
 
 interface ReportStore {
@@ -54,6 +56,7 @@ interface ReportStore {
   setSectorSummaries: (summaries: SectorSummary[]) => void;
   setNewsItems: (items: NewsItem[]) => void;
   setCeoBrief: (brief: string) => void;
+  setUploadedFileName: (name: string | null) => void;
   setFullPayload: (payload: FullPayload) => void;
   reset: () => void;
 }
@@ -99,10 +102,13 @@ export const useReportStore = create<ReportStore>()(
 
       setCeoBrief: (brief) => set({ ceoBrief: brief }),
 
+      setUploadedFileName: (name) => set({ uploadedFileName: name }),
+
       setFullPayload: (payload) =>
         set((s) => ({
           ...(payload.macroGrid !== undefined ? { macroGrid: payload.macroGrid } : {}),
           ...(payload.sectorSummaries !== undefined ? { sectorSummaries: payload.sectorSummaries } : {}),
+          ...(payload.newsItems !== undefined ? { newsItems: payload.newsItems } : {}),
           ...(payload.dashboardStats !== undefined ? { dashboardStats: payload.dashboardStats } : {}),
           data: {
             ...s.data,
