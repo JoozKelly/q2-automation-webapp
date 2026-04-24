@@ -5,6 +5,23 @@ export const dynamic = 'force-dynamic';
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20 MB
 
+function extractJSON(text: string): string | null {
+  const stripped = text.replace(/```(?:json)?\s*/gi, '');
+  const start = stripped.indexOf('{');
+  if (start === -1) return null;
+  let depth = 0; let inString = false; let escape = false;
+  for (let i = start; i < stripped.length; i++) {
+    const ch = stripped[i];
+    if (escape)                  { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true;  continue; }
+    if (ch === '"')              { inString = !inString; continue; }
+    if (inString)                continue;
+    if (ch === '{') depth++;
+    if (ch === '}') { depth--; if (depth === 0) return stripped.slice(start, i + 1); }
+  }
+  return null;
+}
+
 function buildExtractionPrompt(fileNames: string[]): string {
   const now = new Date().toISOString();
   return `You are a senior economic analyst specialising in Batam Free Trade Zone, Indonesia.
@@ -191,10 +208,10 @@ export async function POST(request: Request) {
     });
 
     const raw = message.content[0].type === 'text' ? message.content[0].text : '';
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('Model did not return valid JSON');
-    JSON.parse(match[0]); // validate
-    return Response.json({ ok: true, ...JSON.parse(match[0]) });
+    const jsonStr = extractJSON(raw);
+    if (!jsonStr) throw new Error('Model did not return valid JSON');
+    const parsed = JSON.parse(jsonStr);
+    return Response.json({ ok: true, ...parsed });
   } catch (err) {
     console.error('analyze-files error:', err);
     return Response.json(

@@ -3,6 +3,23 @@ import Anthropic from '@anthropic-ai/sdk';
 
 export const dynamic = 'force-dynamic';
 
+function extractArray(text: string): string | null {
+  const stripped = text.replace(/```(?:json)?\s*/gi, '');
+  const start = stripped.indexOf('[');
+  if (start === -1) return null;
+  let depth = 0; let inString = false; let escape = false;
+  for (let i = start; i < stripped.length; i++) {
+    const ch = stripped[i];
+    if (escape)                  { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true;  continue; }
+    if (ch === '"')              { inString = !inString; continue; }
+    if (inString)                continue;
+    if (ch === '[') depth++;
+    if (ch === ']') { depth--; if (depth === 0) return stripped.slice(start, i + 1); }
+  }
+  return null;
+}
+
 async function runGenspark(query: string): Promise<string> {
   return new Promise((resolve) => {
     const timer = setTimeout(() => resolve(''), 20000);
@@ -75,12 +92,12 @@ Return only the JSON array.`;
         });
 
         const raw = message.content[0].type === 'text' ? message.content[0].text : '[]';
-        const match = raw.match(/\[[\s\S]*\]/);
-        if (!match) throw new Error('No JSON array in response');
+        const jsonStr = extractArray(raw);
+        if (!jsonStr) throw new Error('No JSON array in response');
 
-        JSON.parse(match[0]); // validate
+        JSON.parse(jsonStr); // validate
         send('[LOG] News items structured successfully.');
-        send(`[PAYLOAD] ${match[0]}`);
+        send(`[PAYLOAD] ${jsonStr}`);
         send('[DONE]');
       } catch (err) {
         send(`[ERROR] ${err instanceof Error ? err.message : String(err)}`);

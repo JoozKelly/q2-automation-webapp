@@ -17,6 +17,29 @@ async function tryGenspark(query: string): Promise<string> {
   });
 }
 
+function extractJSON(text: string): string | null {
+  // Strip markdown code fences first
+  const stripped = text.replace(/```(?:json)?\s*/gi, '');
+
+  const start = stripped.indexOf('{');
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < stripped.length; i++) {
+    const ch = stripped[i];
+    if (escape)             { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true; continue; }
+    if (ch === '"')         { inString = !inString; continue; }
+    if (inString)           continue;
+    if (ch === '{')         depth++;
+    if (ch === '}') { depth--; if (depth === 0) return stripped.slice(start, i + 1); }
+  }
+  return null;
+}
+
 function buildPrompt(query: string, rawData: string): string {
   const now = new Date().toISOString();
   return `You are a senior economic analyst specialising in Indonesia's Batam Free Trade Zone (FTZ).
@@ -197,12 +220,12 @@ export async function POST(request: Request) {
         });
 
         const raw = message.content[0].type === 'text' ? message.content[0].text : '';
-        const match = raw.match(/\{[\s\S]*\}/);
-        if (!match) throw new Error('Model did not return valid JSON');
+        const jsonStr = extractJSON(raw);
+        if (!jsonStr) throw new Error('Model did not return valid JSON');
 
-        JSON.parse(match[0]); // validate before sending
+        JSON.parse(jsonStr); // validate before sending
         send('[LOG] Data synthesis complete — populating dashboard...');
-        send(`[PAYLOAD] ${match[0]}`);
+        send(`[PAYLOAD] ${jsonStr}`);
         send('[DONE]');
       } catch (err) {
         send(`[ERROR] ${err instanceof Error ? err.message : String(err)}`);
