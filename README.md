@@ -5,17 +5,27 @@
 
 ---
 
+## Demo
+
+> Full end-to-end walkthrough: Genspark BPS search → live logs → dashboard population → AI narrative generation → PDF export.
+
+![VANTAGE Demo — full end-to-end walkthrough](public/screenshots/demo.webp)
+
+---
+
 ## Screenshots
 
-> **To add screenshots:** run `npm run dev`, open `http://localhost:3000`, screenshot each page, save to `public/screenshots/`, and update the paths below.
-
-| Dashboard — live KPIs + macro grid | Data Ingestion — BPS search + news |
+| Dashboard (empty state) | Dashboard (live data) |
 |---|---|
-| `public/screenshots/dashboard.png` | `public/screenshots/ingestion.png` |
+| ![Dashboard empty](public/screenshots/dashboard.png) | ![Dashboard populated](public/screenshots/dashboard-live.png) |
 
-| Storyline Planner | Report Builder | Excel Export |
-|---|---|---|
-| `public/screenshots/ceo-brief.png` | `public/screenshots/report-builder.png` | `public/screenshots/export.png` |
+| Data Ingestion — BPS Search | Live Genspark CLI Logs |
+|---|---|
+| ![Data Ingestion](public/screenshots/ingestion.png) | ![Live Logs](public/screenshots/ingestion-search.png) |
+
+| Section Selector (after search) | Report Builder |
+|---|---|
+| ![Section selector](public/screenshots/ingestion-results.png) | ![Report Builder](public/screenshots/report-builder.png) |
 
 ---
 
