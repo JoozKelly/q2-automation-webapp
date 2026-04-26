@@ -9,7 +9,9 @@
 
 > Full end-to-end walkthrough: Genspark BPS search → live logs → dashboard population → AI narrative generation → PDF export.
 
-![VANTAGE Demo — full end-to-end walkthrough](public/screenshots/demo.webp)
+<video src="public/screenshots/demo.webp" controls autoplay loop muted width="100%" poster="public/screenshots/dashboard-live.png">
+  <img src="public/screenshots/dashboard-live.png" alt="VANTAGE Dashboard — live KPI data after BPS search" />
+</video>
 
 ---
 
