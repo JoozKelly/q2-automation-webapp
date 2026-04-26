@@ -12,6 +12,8 @@ import type {
   MacroGridGroup,
   DashboardStats,
   NewsItem,
+  LabourStats,
+  TradeStats,
 } from '@/types/report';
 
 const DEFAULT_REPORT: ReportData = {
@@ -32,6 +34,8 @@ interface FullPayload {
   sectorSummaries?: SectorSummary[];
   newsItems?: NewsItem[];
   dashboardStats?: DashboardStats;
+  labourStats?: LabourStats;
+  tradeStats?: TradeStats;
   summary?: string;
 }
 
@@ -44,6 +48,8 @@ interface ReportStore {
   sectorSummaries: SectorSummary[];
   newsItems: NewsItem[];
   ceoBrief: string;
+  labourStats: LabourStats | null;
+  tradeStats: TradeStats | null;
 
   setGDPHistorical: (points: GDPDataPoint[]) => void;
   setRawWorkbook: (wb: Record<string, unknown[]>, fileName: string) => void;
@@ -57,6 +63,8 @@ interface ReportStore {
   setNewsItems: (items: NewsItem[]) => void;
   setCeoBrief: (brief: string) => void;
   setUploadedFileName: (name: string | null) => void;
+  setLabourStats: (stats: LabourStats) => void;
+  setTradeStats: (stats: TradeStats) => void;
   setFullPayload: (payload: FullPayload) => void;
   reset: () => void;
 }
@@ -72,6 +80,8 @@ export const useReportStore = create<ReportStore>()(
       sectorSummaries: [],
       newsItems: [],
       ceoBrief: '',
+      labourStats: null,
+      tradeStats: null,
 
       setGDPHistorical: (points) =>
         set((s) => ({ data: { ...s.data, gdpHistorical: points } })),
@@ -104,12 +114,18 @@ export const useReportStore = create<ReportStore>()(
 
       setUploadedFileName: (name) => set({ uploadedFileName: name }),
 
+      setLabourStats: (stats) => set({ labourStats: stats }),
+
+      setTradeStats: (stats) => set({ tradeStats: stats }),
+
       setFullPayload: (payload) =>
         set((s) => ({
           ...(payload.macroGrid !== undefined ? { macroGrid: payload.macroGrid } : {}),
           ...(payload.sectorSummaries !== undefined ? { sectorSummaries: payload.sectorSummaries } : {}),
           ...(payload.newsItems !== undefined ? { newsItems: payload.newsItems } : {}),
           ...(payload.dashboardStats !== undefined ? { dashboardStats: payload.dashboardStats } : {}),
+          ...(payload.labourStats !== undefined ? { labourStats: payload.labourStats } : {}),
+          ...(payload.tradeStats !== undefined ? { tradeStats: payload.tradeStats } : {}),
           data: {
             ...s.data,
             ...(payload.gdpHistorical !== undefined ? { gdpHistorical: payload.gdpHistorical } : {}),
@@ -127,6 +143,8 @@ export const useReportStore = create<ReportStore>()(
           sectorSummaries: [],
           newsItems: [],
           ceoBrief: '',
+          labourStats: null,
+          tradeStats: null,
         }),
     }),
     {
@@ -139,6 +157,8 @@ export const useReportStore = create<ReportStore>()(
         sectorSummaries: s.sectorSummaries,
         newsItems: s.newsItems,
         ceoBrief: s.ceoBrief,
+        labourStats: s.labourStats,
+        tradeStats: s.tradeStats,
       }),
     }
   )

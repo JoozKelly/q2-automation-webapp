@@ -19,6 +19,33 @@ async function tryGenspark(query: string, timeoutMs = 20000): Promise<string> {
   });
 }
 
+// ── Extract real URLs from Genspark JSON output ───────────────────────────────
+
+interface GensparkItem {
+  title?: string;
+  url?: string;
+  link?: string;
+  href?: string;
+}
+
+function extractSourceUrls(raw: string): Array<{ title: string; url: string }> {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    const items: GensparkItem[] = Array.isArray(parsed)
+      ? (parsed as GensparkItem[])
+      : ((parsed as Record<string, unknown>).results as GensparkItem[] ??
+         (parsed as Record<string, unknown>).items   as GensparkItem[] ??
+         (parsed as Record<string, unknown>).data    as GensparkItem[] ?? []);
+    const urls = items
+      .map((item) => ({ title: item.title ?? '', url: item.url ?? item.link ?? item.href ?? '' }))
+      .filter((x) => x.url.startsWith('http'));
+    if (urls.length > 0) return urls;
+  } catch { /* fall through to regex */ }
+
+  const found = raw.match(/https?:\/\/[^\s"'<>)]+/g) ?? [];
+  return [...new Set(found)].map((url) => ({ title: '', url }));
+}
+
 // ── JSON extraction — returns the LARGEST object found (avoids small inline examples) ──
 
 function extractJSON(text: string): string | null {
@@ -67,11 +94,16 @@ function repairAndParse(raw: string): unknown {
 
 // ── Prompt ────────────────────────────────────────────────────────────────────
 
-function buildPrompt(query: string, rawData: string, period = '2024-2026'): string {
+function buildPrompt(query: string, rawData: string, period = '2024-2026', sourceUrls: Array<{ title: string; url: string }> = []): string {
   const now = new Date().toISOString();
+  const urlBlock = sourceUrls.length > 0
+    ? `\nReal URLs extracted from web search (use these for geoEvents[].sourceUrl where domain or title matches):\n${
+        sourceUrls.slice(0, 20).map((u) => `- ${u.url}${u.title ? `  [${u.title}]` : ''}`).join('\n')
+      }\n`
+    : '';
   return `You are a senior economic analyst specialising in Indonesia's Batam Free Trade Zone (FTZ).
 Today's date is April 2026. Reporting period: Q2 2026 (April–June 2026). Historical data requested: ${period}.
-${rawData ? `\nLive web data for "${query}":\n${rawData.slice(0, 5000)}\n` : ''}
+${rawData ? `\nLive web data for "${query}":\n${rawData.slice(0, 5000)}\n` : ''}${urlBlock}
 Generate a complete economic intelligence payload for Batam FTZ Q2 2026.
 
 CRITICAL FORMATTING RULES — your output will be fed directly to JSON.parse():
@@ -209,12 +241,29 @@ Schema (replace every <...> placeholder with actual values):
     {"sector":"Medical Devices","radarLabel":"Medical","projectCount":2,"highlight":"B. Braun expansion, Terumo new line"},
     {"sector":"E-Cigarettes","radarLabel":"E-Cig","projectCount":4,"highlight":"RLX, SMOORE exports to EU market"}
   ],
+  "labourStats": {
+    "totalWorkers": 142000,
+    "unemploymentRate": 5.8,
+    "newJobsCreated": 3200,
+    "wageGrowthPct": 6.5,
+    "topEmployers": ["Flex Ltd", "Celestica", "B. Braun", "Jabil", "Trina Solar"]
+  },
+  "tradeStats": {
+    "totalExportsUSD": "$4.2B",
+    "totalImportsUSD": "$3.1B",
+    "tradeBalance": "+$1.1B",
+    "topExportProducts": ["Electronics & EMS", "Solar modules", "Medical devices"],
+    "topImportOrigins": ["China", "Singapore", "Japan"],
+    "yoyExportGrowth": "+11%"
+  },
   "summary": "Batam FTZ continues to attract diversified foreign investment in Q2 2026, with particular momentum in data centres and BESS driven by regional digital infrastructure demand. Infrastructure improvements and the US–Indonesia trade framework are reinforcing Batam's competitive positioning despite pressure from Malaysia's Johor SEZ."
 }
 
 gdpData: extend to cover ${period}.
 gdpHistorical: cover the full requested range ${period}.
-geoEvents sourceUrl: use a real URL from the web data if found; otherwise use https://news.google.com/search?q={URL-encoded event title}&hl=en — NEVER invent a fake article path.`;
+geoEvents sourceUrl: PRIORITY ORDER — (1) use a matching URL from the "Real URLs" list above if the domain or title matches, (2) otherwise use https://news.google.com/search?q={URL-encoded event title}&hl=en — NEVER invent a fake article path or use placeholder URLs like "https://www.reuters.com/..."
+labourStats.totalWorkers: total registered workers in Batam FTZ (typically 120,000–160,000 range).
+tradeStats: use actual Q2 2026 Batam FTZ export/import data if available in web data, otherwise estimate from historical trends.`;
 }
 
 // ── BPS queries (tried sequentially until one returns data) ───────────────────
@@ -279,6 +328,12 @@ export async function POST(request: Request) {
 
         const webDataFound = !!gensparkRaw;
 
+        // Extract real article URLs from Genspark JSON before passing to Claude
+        const sourceUrls = gensparkRaw ? extractSourceUrls(gensparkRaw) : [];
+        if (sourceUrls.length > 0) {
+          send(`[LOG] Extracted ${sourceUrls.length} source URLs from search results.`);
+        }
+
         if (!gensparkRaw) {
           send('[LOG] Web search exhausted — synthesising from AI knowledge base...');
           send('[WARN] No live web data found — indicators will be AI-estimated. Upload BPS reports for verified data.');
@@ -296,8 +351,8 @@ export async function POST(request: Request) {
 
           const message = await client.messages.create({
             model: 'claude-sonnet-4-6',
-            max_tokens: 6000,
-            messages: [{ role: 'user', content: buildPrompt(queryParam ?? queries[0], gensparkRaw, period) }],
+            max_tokens: 6500,
+            messages: [{ role: 'user', content: buildPrompt(queryParam ?? queries[0], gensparkRaw, period, sourceUrls) }],
           });
 
           const raw = message.content[0].type === 'text' ? message.content[0].text : '';

@@ -226,7 +226,7 @@ function SectionWrapper({ meta, narrative, isGenerating, onGenerate, onNarrative
 
 export default function ReportBuilder() {
   const { data: chartData }  = useDataStore();
-  const { data: reportData, sectorSummaries, dashboardStats, ceoBrief, macroGrid, newsItems, updateNarrative: saveNarrative } = useReportStore();
+  const { data: reportData, sectorSummaries, dashboardStats, ceoBrief, macroGrid, newsItems, labourStats, tradeStats, updateNarrative: saveNarrative } = useReportStore();
   const { toPDF, targetRef } = usePDF({ filename: 'Batam_Economic_Outlook_Q2_2026.pdf' });
 
   const [narratives, setNarratives] = useState<Record<SectionKey, string>>({
@@ -336,6 +336,8 @@ export default function ReportBuilder() {
           sectorSummaries={sectorSummaries}
           macroGrid={macroGrid}
           newsItems={newsItems}
+          labourStats={labourStats}
+          tradeStats={tradeStats}
         />
       </div>
 

@@ -148,3 +148,20 @@ export interface NewsItem {
   imageUrl?: string;
   sourceUrl?: string;
 }
+
+export interface LabourStats {
+  totalWorkers: number;
+  unemploymentRate: number;
+  newJobsCreated: number;
+  wageGrowthPct: number;
+  topEmployers: string[];
+}
+
+export interface TradeStats {
+  totalExportsUSD: string;
+  totalImportsUSD: string;
+  tradeBalance: string;
+  topExportProducts: string[];
+  topImportOrigins: string[];
+  yoyExportGrowth: string;
+}

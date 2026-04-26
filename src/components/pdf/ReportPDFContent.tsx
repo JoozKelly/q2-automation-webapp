@@ -8,6 +8,7 @@ import {
 import type {
   DashboardStats, InfraProject, GeoEvent,
   SectorSummary, MacroGridGroup, NewsItem,
+  LabourStats, TradeStats,
 } from '@/types/report';
 
 interface GDPPoint       { year: string; gdp: number; target: number; }
@@ -26,6 +27,8 @@ interface Props {
   sectorSummaries?: SectorSummary[];
   macroGrid?: MacroGridGroup[];
   newsItems?: NewsItem[];
+  labourStats?: LabourStats | null;
+  tradeStats?: TradeStats | null;
 }
 
 const NAVY  = '#0a1628';
@@ -61,21 +64,45 @@ function SectionBlock({ num, title, children }: { num: string; title: string; ch
   );
 }
 
+function renderInlineBold(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  if (parts.length === 1) return text;
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.startsWith('**') && part.endsWith('**')
+          ? <strong key={i} style={{ fontWeight: 700 }}>{part.slice(2, -2)}</strong>
+          : <span key={i}>{part}</span>
+      )}
+    </>
+  );
+}
+
 function NarrativeText({ text }: { text: string }) {
   if (!text) return null;
   return (
     <div style={{ fontSize: 12, lineHeight: 1.8, color: '#374151', marginTop: 12 }}>
       {text.split('\n').map((line, i) => {
         if (!line.trim()) return <br key={i} />;
+        if (line.startsWith('# ') && !line.startsWith('## ')) return (
+          <p key={i} style={{ fontWeight: 800, fontSize: 15, color: NAVY, margin: '16px 0 4px' }}>
+            {renderInlineBold(line.slice(2))}
+          </p>
+        );
+        if (line.startsWith('## ') && !line.startsWith('### ')) return (
+          <p key={i} style={{ fontWeight: 700, fontSize: 14, color: NAVY, margin: '14px 0 4px' }}>
+            {renderInlineBold(line.slice(3))}
+          </p>
+        );
         if (line.startsWith('### ')) return (
           <p key={i} style={{ fontWeight: 700, fontSize: 13, color: NAVY, margin: '12px 0 4px' }}>
-            {line.replace('### ', '')}
+            {renderInlineBold(line.slice(4))}
           </p>
         );
         if (line.startsWith('- ')) return (
-          <p key={i} style={{ margin: '2px 0 2px 16px' }}>• {line.slice(2)}</p>
+          <p key={i} style={{ margin: '2px 0 2px 16px' }}>• {renderInlineBold(line.slice(2))}</p>
         );
-        return <p key={i} style={{ margin: '4px 0' }}>{line}</p>;
+        return <p key={i} style={{ margin: '4px 0' }}>{renderInlineBold(line)}</p>;
       })}
     </div>
   );
@@ -147,7 +174,7 @@ export default function ReportPDFContent({
   narratives, period = 'Q2 2026', stats,
   gdpData = [], investmentData = [], inflationData = [],
   infraProjects = [], geoEvents = [], sectorSummaries = [],
-  macroGrid = [], newsItems = [],
+  macroGrid = [], newsItems = [], labourStats = null, tradeStats = null,
 }: Props) {
   const generated = new Date().toLocaleDateString('en-GB', {
     day: 'numeric', month: 'long', year: 'numeric',
@@ -329,7 +356,12 @@ export default function ReportPDFContent({
                   </div>
                 </div>
                 <p style={{ fontSize: 11, color: '#374151', margin: '0 0 3px', lineHeight: 1.5 }}>{ev.description}</p>
-                {ev.source && <p style={{ fontSize: 10, color: '#94a3b8', margin: 0 }}>{ev.source}</p>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
+                  {ev.source && <p style={{ fontSize: 10, color: '#94a3b8', margin: 0 }}>{ev.source}</p>}
+                  {ev.sourceUrl && (
+                    <p style={{ fontSize: 10, color: '#0ea5e9', margin: 0 }}>{ev.sourceUrl}</p>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -388,9 +420,85 @@ export default function ReportPDFContent({
           : <PlaceholderText label="Forward-looking outlook narrative" />}
       </SectionBlock>
 
+      {/* ── Section 06: Labour & Trade ──────────────────────────────── */}
+      {(labourStats || tradeStats) && (
+        <SectionBlock num="06" title="Labour Market & Trade">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
+            {/* Labour */}
+            {labourStats && (
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, color: BLUE, letterSpacing: 0.5, margin: '0 0 10px', textTransform: 'uppercase' as const }}>
+                  Employment
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                  {[
+                    { label: 'Total FTZ Workers',   value: labourStats.totalWorkers.toLocaleString() },
+                    { label: 'Unemployment Rate',    value: `${labourStats.unemploymentRate}%` },
+                    { label: 'New Jobs (Q2)',         value: `+${labourStats.newJobsCreated.toLocaleString()}` },
+                    { label: 'Wage Growth YoY',      value: `+${labourStats.wageGrowthPct}%` },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{ background: '#f8fafc', borderRadius: 4, padding: '6px 8px', border: '1px solid #e2e8f0' }}>
+                      <p style={{ fontSize: 9, color: '#64748b', margin: '0 0 2px', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>{label}</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: NAVY, margin: 0 }}>{value}</p>
+                    </div>
+                  ))}
+                </div>
+                {labourStats.topEmployers.length > 0 && (
+                  <div>
+                    <p style={{ fontSize: 10, color: '#64748b', margin: '0 0 4px', fontWeight: 600 }}>Top Employers</p>
+                    {labourStats.topEmployers.slice(0, 5).map((emp, i) => (
+                      <p key={i} style={{ fontSize: 10, color: '#374151', margin: '2px 0 2px 8px' }}>· {emp}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Trade */}
+            {tradeStats && (
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, color: BLUE, letterSpacing: 0.5, margin: '0 0 10px', textTransform: 'uppercase' as const }}>
+                  Trade & Exports
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                  {[
+                    { label: 'Total Exports',      value: tradeStats.totalExportsUSD },
+                    { label: 'Total Imports',       value: tradeStats.totalImportsUSD },
+                    { label: 'Trade Balance',       value: tradeStats.tradeBalance },
+                    { label: 'Export Growth YoY',   value: tradeStats.yoyExportGrowth },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{ background: '#f8fafc', borderRadius: 4, padding: '6px 8px', border: '1px solid #e2e8f0' }}>
+                      <p style={{ fontSize: 9, color: '#64748b', margin: '0 0 2px', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>{label}</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: NAVY, margin: 0 }}>{value}</p>
+                    </div>
+                  ))}
+                </div>
+                {tradeStats.topExportProducts.length > 0 && (
+                  <div style={{ marginBottom: 8 }}>
+                    <p style={{ fontSize: 10, color: '#64748b', margin: '0 0 4px', fontWeight: 600 }}>Top Exports</p>
+                    {tradeStats.topExportProducts.slice(0, 3).map((p, i) => (
+                      <p key={i} style={{ fontSize: 10, color: '#374151', margin: '2px 0 2px 8px' }}>· {p}</p>
+                    ))}
+                  </div>
+                )}
+                {tradeStats.topImportOrigins.length > 0 && (
+                  <div>
+                    <p style={{ fontSize: 10, color: '#64748b', margin: '0 0 4px', fontWeight: 600 }}>Top Import Origins</p>
+                    {tradeStats.topImportOrigins.slice(0, 3).map((o, i) => (
+                      <p key={i} style={{ fontSize: 10, color: '#374151', margin: '2px 0 2px 8px' }}>· {o}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </SectionBlock>
+      )}
+
       {/* ── News Digest ──────────────────────────────────────────────── */}
       {newsItems.length > 0 && (
-        <SectionBlock num="06" title="News Digest">
+        <SectionBlock num="07" title="News Digest">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {newsItems.slice(0, 6).map((item) => {
               const catColor: Record<string, string> = {
@@ -410,7 +518,10 @@ export default function ReportPDFContent({
                   </span>
                   <p style={{ fontSize: 11, fontWeight: 700, color: NAVY, margin: '3px 0 4px', lineHeight: 1.4 }}>{item.title}</p>
                   <p style={{ fontSize: 10, color: '#374151', margin: '0 0 3px', lineHeight: 1.5 }}>{item.summary}</p>
-                  <p style={{ fontSize: 9, color: '#94a3b8', margin: 0 }}>{item.source} · {item.date}</p>
+                  <p style={{ fontSize: 9, color: '#94a3b8', margin: '0 0 2px' }}>{item.source} · {item.date}</p>
+                  {item.sourceUrl && (
+                    <p style={{ fontSize: 9, color: '#0ea5e9', margin: 0, wordBreak: 'break-all' as const }}>{item.sourceUrl}</p>
+                  )}
                 </div>
               );
             })}

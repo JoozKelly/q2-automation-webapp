@@ -1,6 +1,6 @@
 'use client';
 
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, ShieldCheck, AlertOctagon } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, AlertTriangle, ShieldCheck, AlertOctagon, ExternalLink } from 'lucide-react';
 import type { GeoEvent, TrendSignal, TenantRisk } from '@/types/report';
 
 const DEFAULT_EVENTS: GeoEvent[] = [
@@ -95,7 +95,20 @@ export default function GeoSection({ events = DEFAULT_EVENTS }: { events?: GeoEv
           </div>
 
           {/* Description */}
-          <p className="text-xs text-slate-400 leading-relaxed mb-4">{event.description}</p>
+          <p className="text-xs text-slate-400 leading-relaxed mb-3">{event.description}</p>
+
+          {/* Source link */}
+          {event.sourceUrl && (
+            <a
+              href={event.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[10px] text-sky-400 hover:text-sky-300 transition-colors mb-3"
+            >
+              <ExternalLink size={10} />
+              View source
+            </a>
+          )}
 
           {/* Impact Matrix */}
           <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-800">

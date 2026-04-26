@@ -14,7 +14,7 @@ import GDPHistoricalChart from '@/components/charts/GDPHistoricalChart';
 
 export default function Dashboard() {
   const { data, setData } = useDataStore();
-  const { dashboardStats, macroGrid, newsItems, setFullPayload } = useReportStore();
+  const { dashboardStats, macroGrid, newsItems, labourStats, tradeStats, setFullPayload } = useReportStore();
   const [autoFilling, setAutoFilling] = useState(false);
   const [autoFillLog, setAutoFillLog] = useState<string>('');
 
@@ -189,6 +189,78 @@ export default function Dashboard() {
 
       {/* 3. Historical GDP Chart */}
       <GDPHistoricalChart />
+
+      {/* Labour & Trade panel */}
+      {(labourStats || tradeStats) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {labourStats && (
+            <div className="bg-[#0b1829] border border-[#1e3a5f]/50 rounded-2xl p-6">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#4a5e78] mb-4">Labour Market</p>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {[
+                  { label: 'Total FTZ Workers',  value: labourStats.totalWorkers.toLocaleString() },
+                  { label: 'Unemployment Rate',  value: `${labourStats.unemploymentRate}%` },
+                  { label: 'New Jobs (Q2)',        value: `+${labourStats.newJobsCreated.toLocaleString()}` },
+                  { label: 'Wage Growth YoY',     value: `+${labourStats.wageGrowthPct}%` },
+                ].map(({ label, value }) => (
+                  <div key={label} className="bg-[#0f2040]/60 rounded-xl p-3">
+                    <p className="text-[10px] text-slate-500 mb-1">{label}</p>
+                    <p className="text-lg font-bold text-slate-100">{value}</p>
+                  </div>
+                ))}
+              </div>
+              {labourStats.topEmployers.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Top Employers</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {labourStats.topEmployers.slice(0, 5).map((emp) => (
+                      <span key={emp} className="text-xs bg-[#0f2040] text-slate-400 border border-[#1e3a5f]/50 px-2 py-0.5 rounded-full">
+                        {emp}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {tradeStats && (
+            <div className="bg-[#0b1829] border border-[#1e3a5f]/50 rounded-2xl p-6">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#4a5e78] mb-4">Trade & Exports</p>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {[
+                  { label: 'Total Exports',     value: tradeStats.totalExportsUSD },
+                  { label: 'Total Imports',      value: tradeStats.totalImportsUSD },
+                  { label: 'Trade Balance',      value: tradeStats.tradeBalance },
+                  { label: 'Export Growth YoY',  value: tradeStats.yoyExportGrowth },
+                ].map(({ label, value }) => (
+                  <div key={label} className="bg-[#0f2040]/60 rounded-xl p-3">
+                    <p className="text-[10px] text-slate-500 mb-1">{label}</p>
+                    <p className="text-lg font-bold text-slate-100">{value}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {tradeStats.topExportProducts.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Top Exports</p>
+                    {tradeStats.topExportProducts.slice(0, 3).map((p) => (
+                      <p key={p} className="text-xs text-slate-400 mb-1">· {p}</p>
+                    ))}
+                  </div>
+                )}
+                {tradeStats.topImportOrigins.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Top Origins</p>
+                    {tradeStats.topImportOrigins.slice(0, 3).map((o) => (
+                      <p key={o} className="text-xs text-slate-400 mb-1">· {o}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 4. Quarterly Charts — require data upload / ingest */}
       {!hasData ? (
