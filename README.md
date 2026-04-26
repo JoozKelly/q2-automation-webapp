@@ -9,7 +9,11 @@
 
 > Full end-to-end walkthrough: Genspark BPS search → live logs → dashboard population → AI narrative generation → PDF export.
 
-C:\Users\joozk\OneDrive\Desktop\devfolio\q2-automation-webapp\public\screenshots\demo.mp4
+
+
+https://github.com/user-attachments/assets/72909939-c65d-4bd8-a187-d4de6edd335d
+
+
 
 ---
 
